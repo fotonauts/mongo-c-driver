@@ -572,16 +572,26 @@ bson_bool_t mongo_simple_str_command( mongo *conn, const char *db, const char *c
 int mongo_cmd_drop_db( mongo *conn, const char *db );
 
 /**
+ * Create a collection.
+ *
+ * @param conn a mongo object.
+ * @param db the name of the database.
+ * @param collection the name of the collection to drop.
+ *
+ * @return true if the collection drop was successful.
+ */
+bson_bool_t mongo_cmd_create_collection( mongo *conn, const char *db, const char *collection );
+
+/**
  * Drop a collection.
  *
  * @param conn a mongo object.
  * @param db the name of the database.
  * @param collection the name of the collection to drop.
- * @param out a BSON document containing the result of the command.
  *
  * @return true if the collection drop was successful.
  */
-bson_bool_t mongo_cmd_drop_collection( mongo *conn, const char *db, const char *collection, bson *out );
+bson_bool_t mongo_cmd_drop_collection( mongo *conn, const char *db, const char *collection );
 
 /**
  * Add a database user.

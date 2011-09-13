@@ -1064,8 +1064,12 @@ int mongo_cmd_drop_db( mongo *conn, const char *db ) {
     return mongo_simple_int_command( conn, db, "dropDatabase", 1, NULL );
 }
 
-int mongo_cmd_drop_collection( mongo *conn, const char *db, const char *collection, bson *out ) {
-    return mongo_simple_str_command( conn, db, "drop", collection, out );
+int mongo_cmd_drop_collection( mongo *conn, const char *db, const char *collection ) {
+    return mongo_simple_str_command( conn, db, "drop", collection, NULL );
+}
+
+int mongo_cmd_create_collection( mongo *conn, const char *db, const char *collection ) {
+    return mongo_simple_str_command( conn, db, "create", collection, NULL );
 }
 
 void mongo_cmd_reset_error( mongo *conn, const char *db ) {
