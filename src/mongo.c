@@ -33,18 +33,45 @@
 
 static const int ZERO = 0;
 static const int ONE = 1;
-static mongo_message *mongo_message_create( int len , int id , int responseTo , int op ) {
+static mongo_message *mongo_message_create( size_t len , int id , int responseTo , int op ) {
     mongo_message *mm = ( mongo_message * )bson_malloc( len );
-
+    
+    if ( len >= INT32_MAX) {
+        bson_free( mm );
+        return NULL;
+    }
     if ( !id )
         id = rand();
-
+    
     /* native endian (converted on send) */
-    mm->head.len = len;
+    mm->head.len = (int)len;
     mm->head.id = id;
     mm->head.responseTo = responseTo;
     mm->head.op = op;
+    
+    return mm;
+}
 
+
+static mongo_message *mongo_connection_message_create( mongo *conn, size_t len , int id , int responseTo , int op ) {
+    mongo_message *mm = mongo_message_create( len , id , responseTo , op );
+
+    if ( mm == NULL) {
+        conn->err = MONGO_COMMAND_OVERFLOW;
+        return NULL;
+    }
+
+    return mm;
+}
+
+static mongo_message *mongo_cursor_message_create( mongo_cursor *cursor, size_t len , int id , int responseTo , int op ) {
+    mongo_message *mm = mongo_message_create( len , id , responseTo , op );
+    
+    if ( mm == NULL) {
+        cursor->err = MONGO_CURSOR_OVERFLOW;
+        return NULL;
+    }
+    
     return mm;
 }
 
@@ -510,7 +537,7 @@ static int mongo_cursor_bson_valid( mongo_cursor *cursor, bson *bson ) {
 int mongo_insert_batch( mongo *conn, const char *ns,
                         bson **bsons, int count ) {
 
-    int size =  16 + 4 + strlen( ns ) + 1;
+    size_t size =  16 + 4 + strlen( ns ) + 1;
     int i;
     mongo_message *mm;
     char *data;
@@ -521,7 +548,10 @@ int mongo_insert_batch( mongo *conn, const char *ns,
             return MONGO_ERROR;
     }
 
-    mm = mongo_message_create( size , 0 , 0 , MONGO_OP_INSERT );
+    mm = mongo_connection_message_create( conn, size , 0 , 0 , MONGO_OP_INSERT );
+    if( mm == NULL ) {
+        return MONGO_ERROR;
+    }
 
     data = &mm->data;
     data = mongo_data_append32( data, &ZERO );
@@ -544,11 +574,14 @@ int mongo_insert( mongo *conn , const char *ns , bson *bson ) {
         return MONGO_ERROR;
     }
 
-    mm = mongo_message_create( 16 /* header */
+    mm = mongo_connection_message_create( conn, 16 /* header */
                                + 4 /* ZERO */
                                + strlen( ns )
                                + 1 + bson_size( bson )
                                , 0, 0, MONGO_OP_INSERT );
+    if( mm == NULL ) {
+        return MONGO_ERROR;
+    }
 
     data = &mm->data;
     data = mongo_data_append32( data, &ZERO );
@@ -571,13 +604,16 @@ int mongo_update( mongo *conn, const char *ns, const bson *cond,
         return MONGO_ERROR;
     }
 
-    mm = mongo_message_create( 16 /* header */
+    mm = mongo_connection_message_create( conn, 16 /* header */
                                + 4  /* ZERO */
                                + strlen( ns ) + 1
                                + 4  /* flags */
                                + bson_size( cond )
                                + bson_size( op )
                                , 0 , 0 , MONGO_OP_UPDATE );
+    if( mm == NULL ) {
+        return MONGO_ERROR;
+    }
 
     data = &mm->data;
     data = mongo_data_append32( data, &ZERO );
@@ -600,12 +636,15 @@ int mongo_remove( mongo *conn, const char *ns, const bson *cond ) {
         return MONGO_ERROR;
     }
 
-    mm = mongo_message_create( 16  /* header */
+    mm = mongo_connection_message_create( conn, 16  /* header */
                               + 4  /* ZERO */
                               + strlen( ns ) + 1
                               + 4  /* ZERO */
                               + bson_size( cond )
                               , 0 , 0 , MONGO_OP_DELETE );
+    if( mm == NULL ) {
+        return MONGO_ERROR;
+    }
 
     data = &mm->data;
     data = mongo_data_append32( data, &ZERO );
@@ -643,13 +682,16 @@ static int mongo_cursor_op_query( mongo_cursor *cursor ) {
     else if( mongo_cursor_bson_valid( cursor, cursor->fields ) != MONGO_OK )
         return MONGO_ERROR;
 
-    mm = mongo_message_create( 16 + /* header */
+    mm = mongo_cursor_message_create( cursor, 16 + /* header */
                                4 + /*  options */
                                strlen( cursor->ns ) + 1 + /* ns */
                                4 + 4 + /* skip,return */
                                bson_size( cursor->query ) +
                                bson_size( cursor->fields ) ,
                                0 , 0 , MONGO_OP_QUERY );
+    if( mm == NULL ) {
+        return MONGO_ERROR;
+    }
 
     data = &mm->data;
     data = mongo_data_append32( data , &cursor->options );
@@ -704,19 +746,23 @@ static int mongo_cursor_get_more( mongo_cursor *cursor ) {
         return MONGO_ERROR;
     } else {
         char *data;
-        int sl = strlen( cursor->ns )+1;
+        size_t sl = strlen( cursor->ns )+1;
         int limit = 0;
         mongo_message *mm;
 
         if( cursor->limit > 0 )
             limit = cursor->limit - cursor->seen;
 
-        mm = mongo_message_create( 16 /*header*/
+        mm = mongo_cursor_message_create( cursor, 16 /*header*/
                                    +4 /*ZERO*/
                                    +sl
                                    +4 /*numToReturn*/
                                    +8 /*cursorID*/
                                    , 0, 0, MONGO_OP_GET_MORE );
+        if( mm == NULL ) {
+            return MONGO_ERROR;
+        }
+        
         data = &mm->data;
         data = mongo_data_append32( data, &ZERO );
         data = mongo_data_append( data, cursor->ns, sl );
@@ -882,11 +928,15 @@ int mongo_cursor_destroy( mongo_cursor *cursor ) {
     /* Kill cursor if live. */
     if ( cursor->reply && cursor->reply->fields.cursorID ) {
         mongo *conn = cursor->conn;
-        mongo_message *mm = mongo_message_create( 16 /*header*/
+        mongo_message *mm = mongo_cursor_message_create( cursor, 16 /*header*/
                             +4 /*ZERO*/
                             +4 /*numCursors*/
                             +8 /*cursorID*/
                             , 0, 0, MONGO_OP_KILL_CURSORS );
+        if( mm == NULL ) {
+            return MONGO_ERROR;
+        }
+        
         char *data = &mm->data;
         data = mongo_data_append32( data, &ZERO );
         data = mongo_data_append32( data, &ONE );
@@ -986,7 +1036,7 @@ int mongo_run_command( mongo *conn, const char *db, bson *command,
 
     bson response = {NULL, 0};
     bson fields;
-    int sl = strlen( db );
+    size_t sl = strlen( db );
     char *ns = bson_malloc( sl + 5 + 1 ); /* ".$cmd" + nul */
     int res, success = 0;
 
@@ -1149,16 +1199,21 @@ static void digest2hex( mongo_md5_byte_t digest[16], char hex_digest[33] ) {
     hex_digest[32] = '\0';
 }
 
-static void mongo_pass_digest( const char *user, const char *pass, char hex_digest[33] ) {
+static int mongo_pass_digest( mongo *conn, const char *user, const char *pass, char hex_digest[33] ) {
     mongo_md5_state_t st;
     mongo_md5_byte_t digest[16];
-
+    
+    if( strlen( user ) >= INT32_MAX || strlen( pass ) >= INT32_MAX ) {
+        conn->err = MONGO_COMMAND_OVERFLOW;
+        return MONGO_ERROR;
+    }
     mongo_md5_init( &st );
-    mongo_md5_append( &st, ( const mongo_md5_byte_t * )user, strlen( user ) );
+    mongo_md5_append( &st, ( const mongo_md5_byte_t * )user, (int)strlen( user ) );
     mongo_md5_append( &st, ( const mongo_md5_byte_t * )":mongo:", 7 );
-    mongo_md5_append( &st, ( const mongo_md5_byte_t * )pass, strlen( pass ) );
+    mongo_md5_append( &st, ( const mongo_md5_byte_t * )pass, (int)strlen( pass ) );
     mongo_md5_finish( &st, digest );
     digest2hex( digest, hex_digest );
+    return MONGO_OK;
 }
 
 int mongo_cmd_add_user( mongo *conn, const char *db, const char *user, const char *pass ) {
@@ -1171,7 +1226,10 @@ int mongo_cmd_add_user( mongo *conn, const char *db, const char *user, const cha
     strcpy( ns, db );
     strcpy( ns+strlen( db ), ".system.users" );
 
-    mongo_pass_digest( user, pass, hex_digest );
+    res = mongo_pass_digest( conn, user, pass, hex_digest );
+    if (res != MONGO_OK) {
+        return res;
+    }
 
     bson_init( &user_obj );
     bson_append_string( &user_obj, "user", user );
@@ -1211,11 +1269,18 @@ bson_bool_t mongo_cmd_authenticate( mongo *conn, const char *db, const char *use
         return MONGO_ERROR;
     }
 
-    mongo_pass_digest( user, pass, hex_digest );
+    result = mongo_pass_digest( conn, user, pass, hex_digest );
+    if( result != MONGO_OK ) {
+        return result;
+    }
 
+    if( strlen( nonce ) >= INT32_MAX || strlen( user ) >= INT32_MAX ) {
+        conn->err = MONGO_COMMAND_OVERFLOW;
+        return MONGO_ERROR;
+    }
     mongo_md5_init( &st );
-    mongo_md5_append( &st, ( const mongo_md5_byte_t * )nonce, strlen( nonce ) );
-    mongo_md5_append( &st, ( const mongo_md5_byte_t * )user, strlen( user ) );
+    mongo_md5_append( &st, ( const mongo_md5_byte_t * )nonce, (int)strlen( nonce ) );
+    mongo_md5_append( &st, ( const mongo_md5_byte_t * )user, (int)strlen( user ) );
     mongo_md5_append( &st, ( const mongo_md5_byte_t * )hex_digest, 32 );
     mongo_md5_finish( &st, digest );
     digest2hex( digest, hex_digest );
