@@ -757,7 +757,7 @@ int bson_append_code_w_scope_n( bson *b, const char *name, const char *code, siz
  *
  * @return BSON_OK or BSON_ERROR.
  */
-int bson_append_binary( bson *b, const char *name, char type, const char *str, int len );
+int bson_append_binary( bson *b, const char *name, char type, const char *str, size_t len );
 
 /**
  * Append a bson_bool_t to a bson.

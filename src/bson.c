@@ -600,6 +600,10 @@ static void bson_append32( bson *b, const void *data ) {
     b->cur += 4;
 }
 
+static void bson_append_int32( bson *b, int integer ) {
+    bson_append32( b, &integer );
+}
+
 static void bson_append64( bson *b, const void *data ) {
     bson_little_endian64( b->cur, data );
     b->cur += 8;
@@ -795,14 +799,14 @@ int bson_append_code_w_scope( bson *b, const char *name, const char *code, const
     return bson_append_code_w_scope_n( b, name, code, strlen ( code ), scope );
 }
 
-int bson_append_binary( bson *b, const char *name, char type, const char *str, int len ) {
+int bson_append_binary( bson *b, const char *name, char type, const char *str, size_t len ) {
     if ( type == BSON_BIN_BINARY_OLD ) {
-        int subtwolen = len + 4;
+        size_t subtwolen = len + 4;
         if ( bson_append_estart( b, BSON_BINDATA, name, 4+1+4+len ) == BSON_ERROR )
             return BSON_ERROR;
         bson_append32( b, &subtwolen );
         bson_append_byte( b, type );
-        bson_append32( b, &len );
+        bson_append_int32( b, (int)len );
         bson_append( b, str, len );
     } else {
         if ( bson_append_estart( b, BSON_BINDATA, name, 4+1+len ) == BSON_ERROR )
