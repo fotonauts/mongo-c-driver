@@ -112,7 +112,7 @@ static int mongo_read_response( mongo *conn, mongo_reply **reply ) {
 }
 
 
-static char *mongo_data_append( char *start , const void *data , int len ) {
+static char *mongo_data_append( char *start , const void *data , size_t len ) {
     memcpy( start , data , len );
     return start + len;
 }
