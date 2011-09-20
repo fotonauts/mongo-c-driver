@@ -172,7 +172,7 @@ void bson_oid_gen( bson_oid_t *oid ) {
     static int incr = 0;
     static int fuzz = 0;
     int i;
-    int t = time( NULL );
+    time_t t = time( NULL );
 
     if( oid_inc_func )
         i = oid_inc_func();
@@ -183,7 +183,7 @@ void bson_oid_gen( bson_oid_t *oid ) {
         if ( oid_fuzz_func )
             fuzz = oid_fuzz_func();
         else {
-            srand( t );
+            srand( (int)t );
             fuzz = rand();
         }
     }
@@ -314,7 +314,7 @@ bson_bool_t bson_iterator_more( const bson_iterator *i ) {
 }
 
 bson_type bson_iterator_next( bson_iterator *i ) {
-    int ds;
+    size_t ds;
 
     if ( i->first ) {
         i->first = 0;
@@ -428,7 +428,7 @@ int bson_iterator_int( const bson_iterator *i ) {
     case BSON_INT:
         return bson_iterator_int_raw( i );
     case BSON_LONG:
-        return bson_iterator_long_raw( i );
+        return (int)bson_iterator_long_raw( i );
     case BSON_DOUBLE:
         return bson_iterator_double_raw( i );
     default:
