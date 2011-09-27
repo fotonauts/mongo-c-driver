@@ -516,7 +516,9 @@ int mongo_create_index( mongo *conn, const char *ns, bson *key, int options, bso
  *
  * @return true if the index was created.
  */
-bson_bool_t mongo_create_simple_index( mongo *conn, const char *ns, const char *field, int options, bson *out );
+int mongo_create_simple_index( mongo *conn, const char *ns, const char *field, int options, bson *out );
+
+mongo_cursor *mongo_index_list( mongo *conn, const char *ns );
 
 /* ----------------------------
    COMMANDS
@@ -532,7 +534,7 @@ bson_bool_t mongo_create_simple_index( mongo *conn, const char *ns, const char *
  *
  * @return true if the command ran without error.
  */
-bson_bool_t mongo_run_command( mongo *conn, const char *db, bson *command, bson *out );
+int mongo_run_command( mongo *conn, const char *db, bson *command, bson *out );
 
 /**
  * Run a command that accepts a simple string key and integer value.

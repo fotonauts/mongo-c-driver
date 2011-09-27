@@ -993,9 +993,9 @@ int mongo_create_index( mongo *conn, const char *ns, bson *key, int options, bso
     return mongo_cmd_get_last_error( conn, idxns, out );
 }
 
-bson_bool_t mongo_create_simple_index( mongo *conn, const char *ns, const char *field, int options, bson *out ) {
+int mongo_create_simple_index( mongo *conn, const char *ns, const char *field, int options, bson *out ) {
     bson b;
-    bson_bool_t success;
+    int success;
 
     bson_init( &b );
     bson_append_int( &b, field, 1 );
@@ -1004,6 +1004,28 @@ bson_bool_t mongo_create_simple_index( mongo *conn, const char *ns, const char *
     success = mongo_create_index( conn, ns, &b, options, out );
     bson_destroy( &b );
     return success;
+}
+
+mongo_cursor *mongo_index_list( mongo *conn, const char *ns ) {
+    bson query;
+    mongo_cursor *cursor;
+    
+    bson_init(&query);
+    bson_append_string(&query, "ns", ns);
+    bson_finish(&query);
+    
+    cursor = ( mongo_cursor * )bson_malloc( sizeof( mongo_cursor ) );
+    mongo_cursor_init( cursor, conn, ns );
+    cursor->flags |= MONGO_CURSOR_MUST_FREE;
+    
+    mongo_cursor_set_query( cursor, &query );
+    
+    if( mongo_cursor_op_query( cursor ) != MONGO_OK ) {
+        mongo_cursor_destroy( cursor );
+        cursor = NULL;
+    }
+    bson_destroy(&query);
+    return cursor;
 }
 
 int64_t mongo_count( mongo *conn, const char *db, const char *ns, bson *query ) {
