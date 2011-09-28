@@ -354,7 +354,7 @@ int mongo_remove( mongo *conn, const char *ns, const bson *cond );
  * @param ns the namespace.
  * @param query the bson query.
  * @param fields a bson document of fields to be returned.
- * @param limit the maximum number of documents to retrun.
+ * @param limit the maximum number of documents to return.
  * @param skip the number of documents to skip.
  * @param options A bitfield containing cursor options.
  *
@@ -518,7 +518,18 @@ int mongo_create_index( mongo *conn, const char *ns, bson *key, int options, bso
  */
 int mongo_create_simple_index( mongo *conn, const char *ns, const char *field, int options, bson *out );
 
-mongo_cursor *mongo_index_list( mongo *conn, const char *ns );
+/**
+ * Create a cursor to iterate through all the indexes.
+ *
+ * @param conn a mongo object.
+ * @param ns the namespace.
+ * @param limit the maximum number of indexes to return.
+ *
+ * @return A cursor object allocated on the heap or NULL if
+ *     an error has occurred. For finer-grained error checking,
+ *     use the cursor builder API instead.
+ */
+mongo_cursor *mongo_index_list( mongo *conn, const char *ns, int limit );
 
 /* ----------------------------
    COMMANDS
