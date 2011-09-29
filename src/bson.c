@@ -183,7 +183,7 @@ void bson_oid_gen( bson_oid_t *oid ) {
         if ( oid_fuzz_func )
             fuzz = oid_fuzz_func();
         else {
-            srand( (int)t );
+            srand( ( int )t );
             fuzz = rand();
         }
     }
@@ -428,7 +428,7 @@ int bson_iterator_int( const bson_iterator *i ) {
     case BSON_INT:
         return bson_iterator_int_raw( i );
     case BSON_LONG:
-        return (int)bson_iterator_long_raw( i );
+        return ( int )bson_iterator_long_raw( i );
     case BSON_DOUBLE:
         return bson_iterator_double_raw( i );
     default:
@@ -651,7 +651,7 @@ int bson_finish( bson *b ) {
             b->err = BSON_SIZE_OVERFLOW;
             return BSON_ERROR;
         }
-        i = (int)(b->cur - b->data);
+        i = ( int )( b->cur - b->data );
         bson_little_endian32( b->data, &i );
         b->finished = 1;
     }
@@ -736,8 +736,8 @@ int bson_append_undefined( bson *b, const char *name ) {
 static int bson_append_string_base( bson *b, const char *name,
                              const char *value, size_t len, bson_type type ) {
     
-    int sl = (int)(len + 1);
-    if ( len >= INT32_MAX ) {
+    size_t sl = len + 1;
+    if ( sl > INT32_MAX ) {
         b->err = BSON_SIZE_OVERFLOW;
         // string too long
         return BSON_ERROR;
@@ -747,7 +747,7 @@ static int bson_append_string_base( bson *b, const char *name,
     if ( bson_append_estart( b, type, name, 4 + sl ) == BSON_ERROR ) {
         return BSON_ERROR;
     }
-    bson_append32( b , &sl );
+    bson_append_int32( b , ( int )sl );
     bson_append( b , value , sl - 1 );
     bson_append( b , "\0" , 1 );
     return BSON_OK;
@@ -780,15 +780,15 @@ int bson_append_code_n( bson *b, const char *name, const char *value, int len ) 
 int bson_append_code_w_scope_n( bson *b, const char *name,
                                 const char *code, size_t len, const bson *scope ) {
 
-    int sl = (int)(len + 1);
-    int size = 4 + 4 + sl + bson_size( scope );
+    int sl = ( int )( len + 1 );
+    size_t size = 4 + 4 + sl + bson_size( scope );
     if ( len >= INT32_MAX ) {
         b->err = BSON_SIZE_OVERFLOW;
         return BSON_ERROR;
     }
     if ( bson_append_estart( b, BSON_CODEWSCOPE, name, size ) == BSON_ERROR )
         return BSON_ERROR;
-    bson_append32( b, &size );
+    bson_append_int32( b, ( int )size );
     bson_append32( b, &sl );
     bson_append( b, code, sl );
     bson_append( b, scope->data, bson_size( scope ) );
@@ -804,14 +804,14 @@ int bson_append_binary( bson *b, const char *name, char type, const char *str, s
         size_t subtwolen = len + 4;
         if ( bson_append_estart( b, BSON_BINDATA, name, 4+1+4+len ) == BSON_ERROR )
             return BSON_ERROR;
-        bson_append32( b, &subtwolen );
+        bson_append_int32( b, ( int )subtwolen );
         bson_append_byte( b, type );
-        bson_append_int32( b, (int)len );
+        bson_append_int32( b, ( int )len );
         bson_append( b, str, len );
     } else {
         if ( bson_append_estart( b, BSON_BINDATA, name, 4+1+len ) == BSON_ERROR )
             return BSON_ERROR;
-        bson_append32( b, &len );
+        bson_append_int32( b, ( int )len );
         bson_append_byte( b, type );
         bson_append( b, str, len );
     }
@@ -914,7 +914,7 @@ int bson_append_finish_object( bson *b ) {
         b->err = BSON_SIZE_OVERFLOW;
         return BSON_ERROR;
     }
-    i = (int)(b->cur - start);
+    i = ( int )( b->cur - start );
     bson_little_endian32( start, &i );
 
     return BSON_OK;
