@@ -529,7 +529,9 @@ int mongo_create_simple_index( mongo *conn, const char *ns, const char *field, i
  *     an error has occurred. For finer-grained error checking,
  *     use the cursor builder API instead.
  */
-mongo_cursor *mongo_index_list( mongo *conn, const char *ns, int limit );
+mongo_cursor *mongo_index_list( mongo *conn, const char *ns, int skip, int limit );
+
+int64_t mongo_index_count( mongo *conn, const char *ns );
 
 /* ----------------------------
    COMMANDS

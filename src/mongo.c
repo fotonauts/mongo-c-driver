@@ -1006,7 +1006,7 @@ int mongo_create_simple_index( mongo *conn, const char *ns, const char *field, i
     return success;
 }
 
-mongo_cursor *mongo_index_list( mongo *conn, const char *ns, int limit ) {
+mongo_cursor *mongo_index_list( mongo *conn, const char *ns, int skip, int limit ) {
     bson query;
     mongo_cursor *cursor;
     size_t index_collection_name_size;
@@ -1029,6 +1029,7 @@ mongo_cursor *mongo_index_list( mongo *conn, const char *ns, int limit ) {
     
     cursor = ( mongo_cursor * )bson_malloc( sizeof( mongo_cursor ) );
     mongo_cursor_init( cursor, conn, index_collection_name );
+    mongo_cursor_set_skip( cursor, skip );
     mongo_cursor_set_limit( cursor, limit );
     mongo_cursor_set_query( cursor, &query );
     cursor->flags |= MONGO_CURSOR_MUST_FREE;
@@ -1041,6 +1042,32 @@ mongo_cursor *mongo_index_list( mongo *conn, const char *ns, int limit ) {
     bson_free( index_collection_name );
     bson_destroy( &query );
     return cursor;
+}
+
+int64_t mongo_index_count( mongo *conn, const char *ns ) {
+    bson query;
+    size_t database_name_size;
+    char *database_name;
+    size_t ii = 0;
+    int64_t result;
+    
+    database_name_size = strlen( ns );
+    database_name = bson_malloc( database_name_size );
+    while ( ns[ii] != '.' && ns[ii] != 0 ) {
+        database_name[ii] = ns[ii];
+        ii++;
+    }
+    database_name[ii] = 0;
+    
+    bson_init( &query );
+    bson_append_string( &query, "ns", ns );
+    bson_finish( &query );
+    
+    result = mongo_count( conn, database_name, "system.indexes", &query );
+    
+    bson_free( database_name );
+    bson_destroy( &query );
+    return result;
 }
 
 int64_t mongo_count( mongo *conn, const char *db, const char *ns, bson *query ) {
