@@ -593,11 +593,35 @@ int mongo_cmd_drop_db( mongo *conn, const char *db );
  *
  * @param conn a mongo object.
  * @param db the name of the database.
- * @param collection the name of the collection to drop.
+ * @param collection the name of the collection to create.
  *
  * @return true if the collection drop was successful.
  */
 bson_bool_t mongo_cmd_create_collection( mongo *conn, const char *db, const char *collection );
+
+/**
+ * Create a capped collection.
+ *
+ * @param conn a mongo object.
+ * @param db the name of the database.
+ * @param collection the name of the collection to drop.
+ * @param capsize cap size.
+ *
+ * @return true if the collection drop was successful.
+ */
+bson_bool_t mongo_cmd_create_capped_collection( mongo *conn, const char *db, const char *collection, int64_t capsize );
+
+/**
+ * Rename a collection.
+ *
+ * @param conn a mongo object.
+ * @param db the name of the database.
+ * @param oldcollection the old name of the collection.
+ * @param newcollection the new name of the collection.
+ *
+ * @return true if the collection drop was successful.
+ */
+bson_bool_t mongo_cmd_rename_collection( mongo *conn, const char *db, const char *oldcollection, const char *newcollection );
 
 /**
  * Drop a collection.

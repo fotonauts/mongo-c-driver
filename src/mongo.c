@@ -1186,6 +1186,57 @@ int mongo_cmd_create_collection( mongo *conn, const char *db, const char *collec
     return mongo_simple_str_command( conn, db, "create", collection, NULL );
 }
 
+int mongo_cmd_create_capped_collection( mongo *conn, const char *db, const char *collection, int64_t capsize ) {
+
+    bson out = {NULL, 0};
+    int result;
+    
+    bson cmd;
+    bson_init( &cmd );
+    bson_append_string( &cmd, "create", collection );
+    bson_append_bool( &cmd, "capped", 1 );
+    bson_append_long( &cmd, "size", capsize );
+    bson_finish( &cmd );
+    
+    result = mongo_run_command( conn, db, &cmd, &out );
+    
+    bson_destroy( &cmd );
+    bson_destroy( &out );
+    
+    return result;
+}
+
+bson_bool_t mongo_cmd_rename_collection( mongo *conn, const char *db, const char *oldcollection, const char *newcollection )
+{
+    
+    bson out = {NULL, 0};
+    int result;
+    size_t new_nsname_size, old_nsname_size;
+    char *new_nsname;
+    char *old_nsname;
+    
+    old_nsname_size = strlen(db) + 1 + strlen(oldcollection);
+    old_nsname = malloc(old_nsname_size);
+    snprintf(old_nsname, old_nsname_size, "%s.%s", db, oldcollection);
+    new_nsname_size = strlen(db) + 1 + strlen(newcollection);
+    new_nsname = malloc(new_nsname_size);
+    snprintf(new_nsname, new_nsname_size, "%s.%s", db, newcollection);
+    bson cmd;
+    bson_init( &cmd );
+    bson_append_string( &cmd, "rename", old_nsname );
+    bson_append_string( &cmd, "to", new_nsname );
+    bson_finish( &cmd );
+    
+    result = mongo_run_command( conn, db, &cmd, &out );
+    
+    bson_destroy( &cmd );
+    bson_destroy( &out );
+    free(old_nsname);
+    free(new_nsname);
+    
+    return result;
+}
+
 void mongo_cmd_reset_error( mongo *conn, const char *db ) {
     mongo_simple_int_command( conn, db, "reseterror", 1, NULL );
 }
