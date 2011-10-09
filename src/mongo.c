@@ -33,6 +33,7 @@
 
 static const int ZERO = 0;
 static const int ONE = 1;
+
 static mongo_message *mongo_message_create( size_t len , int id , int responseTo , int op ) {
     mongo_message *mm = ( mongo_message * )bson_malloc( len );
     
