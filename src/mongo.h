@@ -533,6 +533,8 @@ mongo_cursor *mongo_index_list( mongo *conn, const char *ns, int skip, int limit
 
 int64_t mongo_index_count( mongo *conn, const char *ns );
 
+int mongo_drop_indexes( mongo *conn, const char *db, const char *coll, bson *index );
+
 /* ----------------------------
    COMMANDS
    ------------------------------ */

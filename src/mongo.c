@@ -1071,13 +1071,32 @@ int64_t mongo_index_count( mongo *conn, const char *ns ) {
     return result;
 }
 
-int64_t mongo_count( mongo *conn, const char *db, const char *ns, bson *query ) {
+int mongo_drop_indexes( mongo *conn, const char *db, const char *coll, bson *index )
+{
+    bson cmd;
+    bson out = {NULL, 0};
+    int result;
+    
+    bson_init( &cmd );
+    bson_append_string( &cmd, "dropIndexes", coll);
+    bson_append_bson( &cmd, "index", index );
+    bson_finish( &cmd );
+    
+    result = ( mongo_run_command( conn, db, &cmd, &out ) == MONGO_OK )?MONGO_OK:MONGO_ERROR;
+    
+    bson_destroy( &cmd );
+    bson_destroy( &out );
+    
+    return result;
+}
+
+int64_t mongo_count( mongo *conn, const char *db, const char *coll, bson *query ) {
     bson cmd;
     bson out = {NULL, 0};
     int64_t count = -1;
 
     bson_init( &cmd );
-    bson_append_string( &cmd, "count", ns );
+    bson_append_string( &cmd, "count", coll );
     if ( query && bson_size( query ) > 5 ) /* not empty */
         bson_append_bson( &cmd, "query", query );
     bson_finish( &cmd );
