@@ -34,6 +34,23 @@
 static const int ZERO = 0;
 static const int ONE = 1;
 
+static const char *create_database_name_with_ns( const char *ns, const char **collection_name ) {
+    const char *collection = ns;
+    char *database_name;
+    
+    while ( collection[0] != '.' ) {
+        collection++;
+    }
+    collection++;
+    database_name = malloc( collection - ns );
+    strncpy( database_name, ns, collection - ns );
+    database_name[collection - ns - 1] = 0;
+    if ( collection_name ) {
+        *collection_name = collection;
+    }
+    return database_name;
+}
+
 static mongo_message *mongo_message_create( size_t len , int id , int responseTo , int op ) {
     mongo_message *mm = ( mongo_message * )bson_malloc( len );
     
@@ -957,19 +974,24 @@ int mongo_cursor_destroy( mongo_cursor *cursor ) {
 
 /* MongoDB Helper Functions */
 
-int mongo_create_index( mongo *conn, const char *ns, bson *key, int options, bson *out ) {
+int mongo_create_index( mongo *conn, const char *ns, const char *name, bson *key, int options, bson *out ) {
     bson b;
     bson_iterator it;
-    char name[255] = {'_'};
-    int i = 1;
+    char default_name[255];
+    int i = 0;
     char idxns[1024];
-
-    bson_iterator_init( &it, key );
-    while( i < 255 && bson_iterator_next( &it ) ) {
-        strncpy( name + i, bson_iterator_key( &it ), 255 - i );
-        i += strlen( bson_iterator_key( &it ) );
+    
+    if (!name) {
+        bson_iterator_init( &it, key );
+        while( i < 255 && bson_iterator_next( &it ) ) {
+            strncpy( default_name + i, bson_iterator_key( &it ), 255 - i );
+            i += strlen( bson_iterator_key( &it ) );
+            default_name[i] = '_';
+            i++;
+        }
+        default_name[254] = '\0';
+        name = default_name;
     }
-    name[254] = '\0';
 
     bson_init( &b );
     bson_append_bson( &b, "key", key );
@@ -1002,7 +1024,7 @@ int mongo_create_simple_index( mongo *conn, const char *ns, const char *field, i
     bson_append_int( &b, field, 1 );
     bson_finish( &b );
 
-    success = mongo_create_index( conn, ns, &b, options, out );
+    success = mongo_create_index( conn, ns, NULL, &b, options, out );
     bson_destroy( &b );
     return success;
 }
@@ -1047,18 +1069,10 @@ mongo_cursor *mongo_index_list( mongo *conn, const char *ns, int skip, int limit
 
 int64_t mongo_index_count( mongo *conn, const char *ns ) {
     bson query;
-    size_t database_name_size;
-    char *database_name;
-    size_t ii = 0;
+    const char *database_name;
     int64_t result;
     
-    database_name_size = strlen( ns );
-    database_name = bson_malloc( database_name_size );
-    while ( ns[ii] != '.' && ns[ii] != 0 ) {
-        database_name[ii] = ns[ii];
-        ii++;
-    }
-    database_name[ii] = 0;
+    database_name = create_database_name_with_ns( ns, NULL );
     
     bson_init( &query );
     bson_append_string( &query, "ns", ns );
@@ -1066,24 +1080,29 @@ int64_t mongo_index_count( mongo *conn, const char *ns ) {
     
     result = mongo_count( conn, database_name, "system.indexes", &query );
     
-    bson_free( database_name );
+    bson_free( (void *)database_name );
     bson_destroy( &query );
     return result;
 }
 
-int mongo_drop_indexes( mongo *conn, const char *db, const char *coll, bson *index )
+int mongo_drop_indexes( mongo *conn, const char *ns, bson *index )
 {
     bson cmd;
     bson out = {NULL, 0};
+    const char *database_name;
+    const char *collection_name;
     int result;
     
+    database_name = create_database_name_with_ns( ns, &collection_name );
+    
     bson_init( &cmd );
-    bson_append_string( &cmd, "dropIndexes", coll);
+    bson_append_string( &cmd, "dropIndexes", collection_name );
     bson_append_bson( &cmd, "index", index );
     bson_finish( &cmd );
     
-    result = ( mongo_run_command( conn, db, &cmd, &out ) == MONGO_OK )?MONGO_OK:MONGO_ERROR;
+    result = ( mongo_run_command( conn, database_name, &cmd, &out ) == MONGO_OK )?MONGO_OK:MONGO_ERROR;
     
+    free( (void *)database_name );
     bson_destroy( &cmd );
     bson_destroy( &out );
     

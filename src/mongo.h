@@ -503,7 +503,7 @@ int64_t mongo_count( mongo *conn, const char *db, const char *coll,
  *
  * @return MONGO_OK if index is created successfully; otherwise, MONGO_ERROR.
  */
-int mongo_create_index( mongo *conn, const char *ns, bson *key, int options, bson *out );
+int mongo_create_index( mongo *conn, const char *ns, const char *name, bson *key, int options, bson *out );
 
 /**
  * Create an index with a single key.
@@ -533,7 +533,7 @@ mongo_cursor *mongo_index_list( mongo *conn, const char *ns, int skip, int limit
 
 int64_t mongo_index_count( mongo *conn, const char *ns );
 
-int mongo_drop_indexes( mongo *conn, const char *db, const char *coll, bson *index );
+int mongo_drop_indexes( mongo *conn, const char *ns, bson *index );
 
 /* ----------------------------
    COMMANDS
