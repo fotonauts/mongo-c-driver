@@ -552,6 +552,8 @@ int64_t mongo_index_count( mongo *conn, const char *ns );
  */
 int mongo_drop_indexes( mongo *conn, const char *ns, bson *index );
 
+int mongo_reindex( mongo *conn, const char *ns );
+
 /* ----------------------------
    COMMANDS
    ------------------------------ */

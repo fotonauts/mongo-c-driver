@@ -1109,6 +1109,29 @@ int mongo_drop_indexes( mongo *conn, const char *ns, bson *index )
     return result;
 }
 
+int mongo_reindex( mongo *conn, const char *ns )
+{
+    bson cmd;
+    bson out = {NULL, 0};
+    const char *database_name;
+    const char *collection_name;
+    int result;
+    
+    database_name = create_database_name_with_ns( ns, &collection_name );
+    
+    bson_init( &cmd );
+    bson_append_string( &cmd, "reIndex", collection_name );
+    bson_finish( &cmd );
+    
+    result = ( mongo_run_command( conn, database_name, &cmd, &out ) == MONGO_OK )?MONGO_OK:MONGO_ERROR;
+    
+    free( ( void * )database_name );
+    bson_destroy( &cmd );
+    bson_destroy( &out );
+    
+    return result;
+}
+
 int64_t mongo_count( mongo *conn, const char *db, const char *coll, bson *query ) {
     bson cmd;
     bson out = {NULL, 0};
