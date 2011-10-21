@@ -1132,6 +1132,52 @@ int mongo_reindex( mongo *conn, const char *ns )
     return result;
 }
 
+int mongo_map_reduce( mongo *conn, const char *ns, const char *map_function, const char *reduce_function, bson *query, bson *sort, int64_t limit, bson *out, int keeptemp, const char *finalize, bson *scope, int jsmode, int verbose )
+{
+    bson cmd;
+    bson output = {NULL, 0};
+    const char *database_name;
+    const char *collection_name;
+    int result;
+    
+    database_name = create_database_name_with_ns( ns, &collection_name );
+    
+    bson_init( &cmd );
+    bson_append_string( &cmd, "mapreduce", collection_name );
+    bson_append_string( &cmd, "map", map_function );
+    bson_append_string( &cmd, "reduce", reduce_function );
+    if ( query ) {
+        bson_append_bson( &cmd, "query", query );
+    }
+    if ( sort ) {
+        bson_append_bson( &cmd, "sort", sort );
+    }
+    if ( limit > 0 ) {
+        bson_append_long( &cmd, "limit", limit );
+    }
+    if ( out ) {
+        bson_append_bson( &cmd, "out", out );
+    }
+    bson_append_bool( &cmd, "keeptemp", keeptemp );
+    if ( finalize ) {
+        bson_append_string( &cmd, "finalize", finalize );
+    }
+    if ( scope ) {
+        bson_append_bson( &cmd, "out", scope );
+    }
+    bson_append_bool( &cmd, "jsMode", jsmode );
+    bson_append_bool( &cmd, "verbose", verbose );
+    bson_finish( &cmd );
+    
+    result = ( mongo_run_command( conn, database_name, &cmd, &output ) == MONGO_OK )?MONGO_OK:MONGO_ERROR;
+    
+    free( ( void * )database_name );
+    bson_destroy( &cmd );
+    bson_destroy( &output );
+    
+    return result;
+}
+
 int64_t mongo_count( mongo *conn, const char *db, const char *coll, bson *query ) {
     bson cmd;
     bson out = {NULL, 0};
