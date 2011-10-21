@@ -1080,7 +1080,7 @@ int64_t mongo_index_count( mongo *conn, const char *ns ) {
     
     result = mongo_count( conn, database_name, "system.indexes", &query );
     
-    bson_free( (void *)database_name );
+    bson_free( ( void * )database_name );
     bson_destroy( &query );
     return result;
 }
@@ -1102,7 +1102,7 @@ int mongo_drop_indexes( mongo *conn, const char *ns, bson *index )
     
     result = ( mongo_run_command( conn, database_name, &cmd, &out ) == MONGO_OK )?MONGO_OK:MONGO_ERROR;
     
-    free( (void *)database_name );
+    free( ( void * )database_name );
     bson_destroy( &cmd );
     bson_destroy( &out );
     
