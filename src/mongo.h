@@ -531,8 +531,25 @@ int mongo_create_simple_index( mongo *conn, const char *ns, const char *field, i
  */
 mongo_cursor *mongo_index_list( mongo *conn, const char *ns, int skip, int limit );
 
+/**
+ * Get the number of indexes.
+ *
+ * @param conn a mongo object.
+ * @param ns the namespace.
+ *
+ * @return the number of indexes.
+ */
 int64_t mongo_index_count( mongo *conn, const char *ns );
 
+/**
+ * Create a cursor to iterate through all the indexes.
+ *
+ * @param conn a mongo object.
+ * @param ns the namespace.
+ * @param index will be set with the list of indexes.
+ *
+ * @return returns 0 if there was no error.
+ */
 int mongo_drop_indexes( mongo *conn, const char *ns, bson *index );
 
 /* ----------------------------
