@@ -554,7 +554,7 @@ int mongo_drop_indexes( mongo *conn, const char *ns, bson *index );
 
 int mongo_reindex( mongo *conn, const char *ns );
 
-int mongo_map_reduce( mongo *conn, const char *ns, const char *map_function, const char *reduce_function, bson *query, bson *sort, int64_t limit, bson *out, int keeptemp, const char *finalize, bson *scope, int jsmode, int verbose );
+int mongo_map_reduce( mongo *conn, const char *ns, const char *map_function, const char *reduce_function, bson *query, bson *sort, int64_t limit, bson *out, int keeptemp, const char *finalize, bson *scope, int jsmode, int verbose, bson *output );
 
 /* ----------------------------
    COMMANDS

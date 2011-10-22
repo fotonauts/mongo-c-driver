@@ -1132,10 +1132,9 @@ int mongo_reindex( mongo *conn, const char *ns )
     return result;
 }
 
-int mongo_map_reduce( mongo *conn, const char *ns, const char *map_function, const char *reduce_function, bson *query, bson *sort, int64_t limit, bson *out, int keeptemp, const char *finalize, bson *scope, int jsmode, int verbose )
+int mongo_map_reduce( mongo *conn, const char *ns, const char *map_function, const char *reduce_function, bson *query, bson *sort, int64_t limit, bson *out, int keeptemp, const char *finalize, bson *scope, int jsmode, int verbose, bson *output )
 {
     bson cmd;
-    bson output = {NULL, 0};
     const char *database_name;
     const char *collection_name;
     int result;
@@ -1169,11 +1168,10 @@ int mongo_map_reduce( mongo *conn, const char *ns, const char *map_function, con
     bson_append_bool( &cmd, "verbose", verbose );
     bson_finish( &cmd );
     
-    result = ( mongo_run_command( conn, database_name, &cmd, &output ) == MONGO_OK )?MONGO_OK:MONGO_ERROR;
+    result = ( mongo_run_command( conn, database_name, &cmd, output ) == MONGO_OK )?MONGO_OK:MONGO_ERROR;
     
     free( ( void * )database_name );
     bson_destroy( &cmd );
-    bson_destroy( &output );
     
     return result;
 }
