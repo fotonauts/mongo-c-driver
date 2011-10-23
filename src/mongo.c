@@ -1155,14 +1155,17 @@ int mongo_map_reduce( mongo *conn, const char *ns, const char *map_function, con
         bson_append_long( &cmd, "limit", limit );
     }
     if ( out ) {
-        bson_append_bson( &cmd, "out", out );
+        bson_iterator iterator;
+        
+        bson_find( &iterator, out, "out" );
+        bson_append_element(&cmd, "out", &iterator);
     }
     bson_append_bool( &cmd, "keeptemp", keeptemp );
     if ( finalize ) {
         bson_append_string( &cmd, "finalize", finalize );
     }
     if ( scope ) {
-        bson_append_bson( &cmd, "out", scope );
+        bson_append_bson( &cmd, "scope", scope );
     }
     bson_append_bool( &cmd, "jsMode", jsmode );
     bson_append_bool( &cmd, "verbose", verbose );
