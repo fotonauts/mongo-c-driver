@@ -73,33 +73,34 @@ int mongo_socket_connect( mongo *conn, const char *host, int port ) {
     char serviceName[256];
 
     snprintf(serviceName, sizeof(serviceName), "%d", port);
-    req.ai_flags = 0;
+    req.ai_flags = AI_NUMERICSERV;
     req.ai_family = AF_UNSPEC;
     req.ai_socktype = SOCK_STREAM;
     req.ai_protocol = IPPROTO_TCP;
     
     req.ai_protocol = 0;
-    if ((code = getaddrinfo(host, serviceName, &req, &ans)) != 0) {
+    if ( ( code = getaddrinfo( host, serviceName, &req, &ans ) ) != 0 ) {
         conn->err = MONGO_CONN_ADDR_FAIL;
-        freeaddrinfo(ans);
+        freeaddrinfo( ans );
         return MONGO_ERROR;
     }
     
     if( mongo_create_socket( conn, ans->ai_family, ans->ai_socktype, ans->ai_protocol ) != MONGO_OK ) {
-        freeaddrinfo(ans);
+        freeaddrinfo( ans );
         return MONGO_ERROR;
     }
 
     if ( connect( conn->sock, ans->ai_addr, ans->ai_addrlen ) == -1 ) {
+        printf( "can not connect to %s:%d with socket %d\n", host, port, conn->sock );
         mongo_close_socket( conn->sock );
-        freeaddrinfo(ans);
+        freeaddrinfo( ans );
         conn->connected = 0;
         conn->sock = 0;
         conn->err = MONGO_CONN_FAIL;
         return MONGO_ERROR;
     }
 
-    freeaddrinfo(ans);
+    freeaddrinfo( ans );
     setsockopt( conn->sock, IPPROTO_TCP, TCP_NODELAY, ( char * ) &flag, sizeof( flag ) );
     if( conn->op_timeout_ms > 0 )
         mongo_set_socket_op_timeout( conn, conn->op_timeout_ms );
