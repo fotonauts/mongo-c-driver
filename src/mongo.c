@@ -202,7 +202,7 @@ void mongo_init( mongo *conn ) {
     memset( conn, 0, sizeof( mongo ) );
 }
 
-int mongo_connect( mongo *conn , const char *host, int port ) {
+int mongo_connect( mongo *conn, const char *host, int port ) {
     mongo_init( conn );
 
     conn->primary = bson_malloc( sizeof( mongo_host_port ) );
