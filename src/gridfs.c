@@ -441,7 +441,7 @@ void gridfile_destroy( gridfile *gfile )
 }
 
 bson_bool_t gridfile_exists( gridfile *gfile ) {
-    return ( bson_bool_t )( gfile != NULL || gfile->meta == NULL );
+    return ( bson_bool_t )( gfile != NULL && gfile->meta == NULL );
 }
 
 const char *gridfile_get_filename( gridfile *gfile ) {
