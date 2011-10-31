@@ -604,7 +604,7 @@ int mongo_insert( mongo *conn , const char *ns , bson *bson ) {
     data = &mm->data;
     data = mongo_data_append32( data, &ZERO );
     data = mongo_data_append( data, ns, strlen( ns ) + 1 );
-    data = mongo_data_append( data, bson->data, bson_size( bson ) );
+    mongo_data_append( data, bson->data, bson_size( bson ) );
 
     return mongo_message_send( conn, mm );
 }
@@ -638,7 +638,7 @@ int mongo_update( mongo *conn, const char *ns, const bson *cond,
     data = mongo_data_append( data, ns, strlen( ns ) + 1 );
     data = mongo_data_append32( data, &flags );
     data = mongo_data_append( data, cond->data, bson_size( cond ) );
-    data = mongo_data_append( data, op->data, bson_size( op ) );
+    mongo_data_append( data, op->data, bson_size( op ) );
 
     return mongo_message_send( conn, mm );
 }
@@ -668,7 +668,7 @@ int mongo_remove( mongo *conn, const char *ns, const bson *cond ) {
     data = mongo_data_append32( data, &ZERO );
     data = mongo_data_append( data, ns, strlen( ns ) + 1 );
     data = mongo_data_append32( data, &ZERO );
-    data = mongo_data_append( data, cond->data, bson_size( cond ) );
+    mongo_data_append( data, cond->data, bson_size( cond ) );
 
     return mongo_message_send( conn, mm );
 }
@@ -785,7 +785,7 @@ static int mongo_cursor_get_more( mongo_cursor *cursor ) {
         data = mongo_data_append32( data, &ZERO );
         data = mongo_data_append( data, cursor->ns, sl );
         data = mongo_data_append32( data, &limit );
-        data = mongo_data_append64( data, &cursor->reply->fields.cursorID );
+        mongo_data_append64( data, &cursor->reply->fields.cursorID );
 
         bson_free( cursor->reply );
         res = mongo_message_send( cursor->conn, mm );
@@ -958,7 +958,7 @@ int mongo_cursor_destroy( mongo_cursor *cursor ) {
         char *data = &mm->data;
         data = mongo_data_append32( data, &ZERO );
         data = mongo_data_append32( data, &ONE );
-        data = mongo_data_append64( data, &cursor->reply->fields.cursorID );
+        mongo_data_append64( data, &cursor->reply->fields.cursorID );
 
         result = mongo_message_send( conn, mm );
     }
