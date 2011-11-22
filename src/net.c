@@ -112,7 +112,7 @@ int mongo_socket_connect( mongo *conn, const char *host, int port ) {
     int flag = 1;
     char serviceName[256];
 
-    snprintf(serviceName, sizeof(serviceName), "%d", port);
+    snprintf( serviceName, sizeof( serviceName ), "%d", port );
     req.ai_flags = AI_NUMERICSERV;
     req.ai_family = AF_UNSPEC;
     req.ai_socktype = SOCK_STREAM;
@@ -131,7 +131,7 @@ int mongo_socket_connect( mongo *conn, const char *host, int port ) {
     // but the mongo server might listen only to 127.0.0.1 or ::1, so we need to try all ips).
     ans_cursor = ans;
     while ( ans_cursor ) {
-        if( mongo_create_socket( conn, ans_cursor->ai_family, ans_cursor->ai_socktype, ans_cursor->ai_protocol ) != MONGO_OK ) {
+        if ( mongo_create_socket( conn, ans_cursor->ai_family, ans_cursor->ai_socktype, ans_cursor->ai_protocol ) != MONGO_OK ) {
             printf( "cannot create socket, error %d\n", errno );
             perror( "mongo_create_socket error" );
         } else if ( connect( conn->sock, ans_cursor->ai_addr, ans_cursor->ai_addrlen ) == -1 ) {
@@ -148,7 +148,7 @@ int mongo_socket_connect( mongo *conn, const char *host, int port ) {
     freeaddrinfo( ans );
     if ( ans_cursor ) {
         setsockopt( conn->sock, IPPROTO_TCP, TCP_NODELAY, ( char * ) &flag, sizeof( flag ) );
-        if( conn->op_timeout_ms > 0 )
+        if ( conn->op_timeout_ms > 0 )
             mongo_set_socket_op_timeout( conn, conn->op_timeout_ms );
 
         conn->connected = 1;
