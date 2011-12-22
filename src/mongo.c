@@ -1200,6 +1200,7 @@ int64_t mongo_count( mongo *conn, const char *db, const char *coll, bson *query 
     } else {
         bson_destroy( &out );
         bson_destroy( &cmd );
+        bson_destroy( &out );
         return MONGO_ERROR;
     }
 }
@@ -1226,12 +1227,13 @@ int mongo_run_command( mongo *conn, const char *db, bson *command,
         if( bson_find( &it, &response, "ok" ) )
             success = bson_iterator_bool( &it );
 
+        if( out )
+            *out = response;
+        
         if( !success ) {
             conn->err = MONGO_COMMAND_FAILED;
             return MONGO_ERROR;
         } else {
-            if( out )
-              *out = response;
             return MONGO_OK;
         }
     }
@@ -1522,6 +1524,7 @@ bson_bool_t mongo_cmd_authenticate( mongo *conn, const char *db, const char *use
 
     bson_destroy( &from_db );
     bson_destroy( &cmd );
+    bson_destroy( &out );
 
     return result;
 }
