@@ -1220,9 +1220,14 @@ int mongo_run_command( mongo *conn, const char *db, bson *command,
     res = mongo_find_one( conn, ns, command, bson_empty( &fields ), &response );
     bson_free( ns );
 
-    if( res != MONGO_OK )
+    if( res != MONGO_OK ) {
+        if( out ) {
+            out->data = NULL;
+            out->cur = NULL;
+        }
+    
         return MONGO_ERROR;
-    else {
+    } else {
         bson_iterator it;
         if( bson_find( &it, &response, "ok" ) )
             success = bson_iterator_bool( &it );
