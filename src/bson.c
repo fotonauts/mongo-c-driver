@@ -660,11 +660,13 @@ int bson_finish( bson *b ) {
 }
 
 void bson_destroy( bson *b ) {
-    bson_free( b->data );
-    b->err = 0;
-    b->data = 0;
-    b->cur = 0;
-    b->finished = 1;
+    if( b->data != NULL ) {
+        bson_free( b->data );
+        b->err = 0;
+        b->data = 0;
+        b->cur = 0;
+        b->finished = 1;
+    }
 }
 
 static int bson_append_estart( bson *b, int type, const char *name, const size_t dataSize ) {
