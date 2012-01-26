@@ -69,12 +69,11 @@ static int mongo_create_socket( mongo *conn, int domain, int type, int protocol 
 
 static void print_ip_from_address( struct addrinfo *ans )
 {
-    char *proto_arr[] = { "IPv4","IPv6","UNIX" };
-    char *service=NULL;
+    char *proto_arr[] = { "IPv4", "IPv6" };
     int err;
     struct sockaddr *sa;
-    int size;
-    int proto;
+    int size = 0;
+    int proto = 0;
     int nameinfoflags = NI_NUMERICHOST;
     
     char hostbuf[NI_MAXHOST];
@@ -82,7 +81,6 @@ static void print_ip_from_address( struct addrinfo *ans )
     
     
     sa=ans->ai_addr;
-    size=0;
     switch ( sa->sa_family ) {
         case PF_INET:
             size=sizeof( struct sockaddr_in );
@@ -99,31 +97,29 @@ static void print_ip_from_address( struct addrinfo *ans )
         if ( (err = getnameinfo( sa, size, hostbuf, sizeof(hostbuf), servbuf, sizeof(servbuf), nameinfoflags ) ) ) {
             fprintf( stderr,"%s\n", gai_strerror( err ) );
         } else {
-            if ( service )
-                printf( "%s %s %s\n", proto_arr[proto], hostbuf, servbuf );
-            else
-                printf( "%s %s\n", proto_arr[proto], hostbuf );
+            printf( "%s %s\n", proto_arr[proto], hostbuf );
         }
     }
 }
 
 int mongo_socket_connect( mongo *conn, const char *host, int port ) {
-    struct addrinfo req, *ans, *ans_cursor;
+    struct addrinfo req, *ans = NULL, *ans_cursor;
     int flag = 1;
-    char serviceName[256];
+    char serviceName[NI_MAXSERV];
 
     snprintf( serviceName, sizeof( serviceName ), "%d", port );
+    memset(&req, 0, sizeof (req));
     req.ai_flags = AI_NUMERICSERV;
     req.ai_family = AF_UNSPEC;
     req.ai_socktype = SOCK_STREAM;
-    req.ai_protocol = IPPROTO_TCP;
     
-    req.ai_protocol = 0;
     if ( getaddrinfo( host, serviceName, &req, &ans ) != 0 ) {
         printf( "cannot get address info, error %d\n", errno );
         perror( "getaddrinfo error" );
         conn->err = MONGO_CONN_ADDR_FAIL;
-        freeaddrinfo( ans );
+        if ( ans ) {
+            freeaddrinfo( ans );
+        }
         return MONGO_ERROR;
     }
     
