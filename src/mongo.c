@@ -1232,6 +1232,12 @@ int mongo_run_command( mongo *conn, const char *db, bson *command,
         if( bson_find( &it, &response, "ok" ) )
             success = bson_iterator_bool( &it );
 
+        if( bson_find( &it, &response, "errmsg" ) ) {
+            bson_free( conn->lasterrstr );
+            conn->lasterrstr = bson_malloc( strlen( bson_iterator_string( &it ) ) + 1 );
+            strcpy( conn->lasterrstr, bson_iterator_string( &it ) );
+        }
+
         if( out )
             *out = response;
         
