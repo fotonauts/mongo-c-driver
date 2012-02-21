@@ -16,8 +16,8 @@
  */
 
 /* Header for generic net.h */
-#ifndef _MONGO_NET_H_
-#define _MONGO_NET_H_
+#ifndef MONGO_NET_H_
+#define MONGO_NET_H_
 
 #include "mongo.h"
 
@@ -53,5 +53,7 @@ int mongo_read_socket( mongo *conn, void *buf, size_t len );
 int mongo_write_socket( mongo *conn, const void *buf, size_t len );
 int mongo_socket_connect( mongo *conn, const char *host, int port );
 
+/* Initialize the socket services */
+int mongo_sock_init();
 MONGO_EXTERN_C_END
 #endif

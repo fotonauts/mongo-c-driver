@@ -17,14 +17,27 @@
 
 /* Implementation for generic version of net.h */
 #include "net.h"
+#include <errno.h>
 #include <string.h>
 #include <errno.h>
+#include <signal.h>
+
+#ifndef NI_MAXSERV
+# define NI_MAXSERV 32
+#endif
+#ifndef MSG_NOSIGNAL
+# define MSG_NOSIGNAL 0
+#endif
 
 int mongo_write_socket( mongo *conn, const void *buf, size_t len ) {
     const char *cbuf = buf;
+    int flags = MSG_NOSIGNAL;
+
     while ( len ) {
-        size_t sent = send( conn->sock, cbuf, len, 0 );
+        size_t sent = send( conn->sock, cbuf, len, flags );
         if ( sent == -1 ) {
+            if (errno == EPIPE) 
+                conn->connected = 0;
             conn->err = MONGO_IO_ERROR;
             return MONGO_ERROR;
         }
@@ -55,90 +68,80 @@ int mongo_set_socket_op_timeout( mongo *conn, int millis ) {
     return MONGO_OK;
 }
 
-static int mongo_create_socket( mongo *conn, int domain, int type, int protocol ) {
-    int fd;
+#ifdef _MONGO_USE_GETADDRINFO
+int mongo_socket_connect( mongo *conn, const char *host, int port ) {
+    char port_str[NI_MAXSERV];
+    int status;
 
-    if( ( fd = socket( domain, type, protocol ) ) == -1 ) {
-        conn->err = MONGO_CONN_NO_SOCKET;
+    struct addrinfo ai_hints;
+    struct addrinfo *ai_list = NULL;
+    struct addrinfo *ai_ptr = NULL;
+
+    conn->sock = 0;
+    conn->connected = 0;
+
+    bson_sprintf( port_str, "%d", port );
+
+    memset( &ai_hints, 0, sizeof( ai_hints ) );
+#ifdef AI_ADDRCONFIG
+    ai_hints.ai_flags = AI_ADDRCONFIG;
+#endif
+    ai_hints.ai_family = AF_UNSPEC;
+    ai_hints.ai_socktype = SOCK_STREAM;
+
+    status = getaddrinfo( host, port_str, &ai_hints, &ai_list );
+    if ( status != 0 ) {
+        bson_errprintf( "getaddrinfo failed: %s", gai_strerror( status ) );
+        conn->err = MONGO_CONN_ADDR_FAIL;
         return MONGO_ERROR;
     }
-    conn->sock = fd;
+
+    for ( ai_ptr = ai_list; ai_ptr != NULL; ai_ptr = ai_ptr->ai_next ) {
+        conn->sock = socket( ai_ptr->ai_family, ai_ptr->ai_socktype, ai_ptr->ai_protocol );
+        if ( conn->sock < 0 ) {
+            conn->sock = 0;
+            continue;
+        }
+
+        status = connect( conn->sock, ai_ptr->ai_addr, ai_ptr->ai_addrlen );
+        if ( status != 0 ) {
+            mongo_close_socket( conn->sock );
+            conn->sock = 0;
+            continue;
+        }
+
+        if ( ai_ptr->ai_protocol == IPPROTO_TCP ) {
+            int flag = 1;
+
+            setsockopt( conn->sock, IPPROTO_TCP, TCP_NODELAY,
+                        ( void * ) &flag, sizeof( flag ) );
+            if ( conn->op_timeout_ms > 0 )
+                mongo_set_socket_op_timeout( conn, conn->op_timeout_ms );
+        }
+
+        conn->connected = 1;
+        break;
+    }
+
+    freeaddrinfo( ai_list );
+
+    if ( ! conn->connected ) {
+        conn->err = MONGO_CONN_FAIL;
+        return MONGO_ERROR;
+    }
 
     return MONGO_OK;
 }
 
-static void print_ip_from_address( struct addrinfo *ans )
-{
-    char *proto_arr[] = { "IPv4", "IPv6" };
-    int err;
-    struct sockaddr *sa;
-    int size = 0;
-    int proto = 0;
-    int nameinfoflags = NI_NUMERICHOST;
-    
-    char hostbuf[NI_MAXHOST];
-    char servbuf[NI_MAXSERV];
-    
-    
-    sa=ans->ai_addr;
-    switch ( sa->sa_family ) {
-        case PF_INET:
-            size=sizeof( struct sockaddr_in );
-            proto=0;
-            break;
-        case PF_INET6:
-            size=sizeof( struct sockaddr_in6 );
-            proto=1;
-            break;
-        default:
-            fprintf( stderr, "Unknown protocol family in result: %d\n", sa->sa_family );
-    }
-    if ( size ) {
-        if ( (err = getnameinfo( sa, size, hostbuf, sizeof(hostbuf), servbuf, sizeof(servbuf), nameinfoflags ) ) ) {
-            fprintf( stderr,"%s\n", gai_strerror( err ) );
-        } else {
-            printf( "%s %s\n", proto_arr[proto], hostbuf );
-        }
-    }
-}
-
+#else
 int mongo_socket_connect( mongo *conn, const char *host, int port ) {
     struct addrinfo req, *ans = NULL, *ans_cursor;
     int flag = 1;
-    char serviceName[NI_MAXSERV];
 
-    snprintf( serviceName, sizeof( serviceName ), "%d", port );
-    memset(&req, 0, sizeof (req));
-    req.ai_flags = AI_NUMERICSERV;
-    req.ai_family = AF_UNSPEC;
-    req.ai_socktype = SOCK_STREAM;
-    
-    if ( getaddrinfo( host, serviceName, &req, &ans ) != 0 ) {
-        printf( "cannot get address info, error %d\n", errno );
-        perror( "getaddrinfo error" );
-        conn->err = MONGO_CONN_ADDR_FAIL;
-        if ( ans ) {
-            freeaddrinfo( ans );
-        }
+    if ( ( conn->sock = socket( AF_INET, SOCK_STREAM, 0 ) ) < 0 ) {
+        conn->sock = 0;
+        conn->err = MONGO_CONN_NO_SOCKET;
         return MONGO_ERROR;
-    }
-    
-    // test all ips that match the host (this is useful when entering localhost, since it will match 127.0.0.1 and ::1
-    // but the mongo server might listen only to 127.0.0.1 or ::1, so we need to try all ips).
-    ans_cursor = ans;
-    while ( ans_cursor ) {
-        if ( mongo_create_socket( conn, ans_cursor->ai_family, ans_cursor->ai_socktype, ans_cursor->ai_protocol ) != MONGO_OK ) {
-            printf( "cannot create socket, error %d\n", errno );
-            perror( "mongo_create_socket error" );
-        } else if ( connect( conn->sock, ans_cursor->ai_addr, ans_cursor->ai_addrlen ) == -1 ) {
-            print_ip_from_address( ans_cursor );
-            printf( "can not connect to %s:%d with socket %d, error number %d \n", host, port, conn->sock, errno );
-            perror( "connect error" );
-            mongo_close_socket( conn->sock );
-        } else {
-            break;
-        }
-        ans_cursor = ans_cursor->ai_next;
     }
 
     freeaddrinfo( ans );
@@ -155,4 +158,48 @@ int mongo_socket_connect( mongo *conn, const char *host, int port ) {
         conn->err = MONGO_CONN_FAIL;
         return MONGO_ERROR;
     }
+
+    setsockopt( conn->sock, IPPROTO_TCP, TCP_NODELAY, ( char * ) &flag, sizeof( flag ) );
+
+    if( conn->op_timeout_ms > 0 )
+        mongo_set_socket_op_timeout( conn, conn->op_timeout_ms );
+
+    conn->connected = 1;
+
+    return MONGO_OK;
+}
+
+#endif
+
+int mongo_sock_init( void ) {
+
+#if defined(_WIN32)
+    WSADATA wsaData;
+    WORD wVers;
+#elif defined(SIGPIPE)
+    struct sigaction act;
+#endif
+
+    static int called_once;
+    static int retval;
+    if (called_once) return retval;
+    called_once = 1;
+
+#if defined(_WIN32)
+    wVers = MAKEWORD(1, 1);
+    retval = (WSAStartup(wVers, &wsaData) == 0);
+#elif defined(MACINTOSH)
+    GUSISetup(GUSIwithInternetSockets);
+    retval = 1;
+#elif defined(SIGPIPE)
+    retval = 1;
+    if (sigaction(SIGPIPE, (struct sigaction *)NULL, &act) < 0)
+        retval = 0;
+    else if (act.sa_handler == SIG_DFL) {
+        act.sa_handler = SIG_IGN;
+        if (sigaction(SIGPIPE, &act, (struct sigaction *)NULL) < 0)
+            retval = 0;
+    }
+#endif
+    return retval;
 }
