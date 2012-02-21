@@ -33,7 +33,7 @@
 
 
 
-MONGO_EXPORT mongo* mongo_create() {
+MONGO_EXPORT mongo* mongo_create( void ) {
     return (mongo*)bson_malloc(sizeof(mongo));
 }
 
@@ -57,7 +57,7 @@ MONGO_EXPORT int mongo_get_op_timeout(mongo* conn) {
 }
 
 
-const char* _get_host_port(mongo_host_port* hp) {
+static const char* _get_host_port(mongo_host_port* hp) {
     static char _hp[sizeof(hp->host)+12];
     sprintf(_hp, "%s:%d", hp->host, hp->port);
     return _hp;
@@ -101,7 +101,7 @@ MONGO_EXPORT const char* mongo_get_host(mongo* conn, int i) {
 }
 
 
-MONGO_EXPORT mongo_cursor* mongo_cursor_create() {
+MONGO_EXPORT mongo_cursor* mongo_cursor_create( void ) {
     return (mongo_cursor*)bson_malloc(sizeof(mongo_cursor));
 }
 
@@ -1157,7 +1157,7 @@ mongo_cursor *mongo_index_list( mongo *conn, const char *ns, int skip, int limit
 MONGO_EXPORT double mongo_index_count( mongo *conn, const char *ns ) {
     bson query;
     const char *database_name;
-    int64_t result;
+    double result;
     
     database_name = create_database_name_with_ns( ns, NULL );
     

@@ -171,7 +171,7 @@ typedef struct {
 
 /* Connection API */
 
-MONGO_EXPORT mongo* mongo_create();
+MONGO_EXPORT mongo* mongo_create( void );
 MONGO_EXPORT void mongo_dispose(mongo* conn);
 MONGO_EXPORT int mongo_get_err(mongo* conn);
 MONGO_EXPORT int mongo_is_connected(mongo* conn);
@@ -180,7 +180,7 @@ MONGO_EXPORT const char* mongo_get_primary(mongo* conn);
 MONGO_EXPORT int mongo_get_socket(mongo* conn) ;
 MONGO_EXPORT int mongo_get_host_count(mongo* conn);
 MONGO_EXPORT const char* mongo_get_host(mongo* conn, int i);
-MONGO_EXPORT mongo_cursor* mongo_cursor_create();
+MONGO_EXPORT mongo_cursor* mongo_cursor_create( void );
 MONGO_EXPORT void mongo_cursor_dispose(mongo_cursor* cursor);
 MONGO_EXPORT int  mongo_get_server_err(mongo* conn);
 MONGO_EXPORT const char*  mongo_get_server_err_string(mongo* conn);
@@ -553,7 +553,7 @@ mongo_cursor *mongo_index_list( mongo *conn, const char *ns, int skip, int limit
  *
  * @return the number of indexes.
  */
-int64_t mongo_index_count( mongo *conn, const char *ns );
+double mongo_index_count( mongo *conn, const char *ns );
 
 /**
  * Create a cursor to iterate through all the indexes.
