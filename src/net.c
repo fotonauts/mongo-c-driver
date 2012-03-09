@@ -31,7 +31,11 @@
 
 int mongo_write_socket( mongo *conn, const void *buf, size_t len ) {
     const char *cbuf = buf;
+#ifdef _WIN32
+    int flags = 0;
+#else
     int flags = MSG_NOSIGNAL;
+#endif
 
     while ( len ) {
         size_t sent = send( conn->sock, cbuf, len, flags );
@@ -171,7 +175,7 @@ int mongo_socket_connect( mongo *conn, const char *host, int port ) {
 
 #endif
 
-int mongo_sock_init( void ) {
+MONGO_EXPORT int mongo_sock_init() {
 
 #if defined(_WIN32)
     WSADATA wsaData;
