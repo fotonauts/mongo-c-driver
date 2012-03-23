@@ -16,8 +16,11 @@
  */
 
 /* Implementation for Linux version of net.h */
-#include "net.h"
 #include <string.h>
+#include <errno.h>
+#include <sys/time.h>
+
+#include "env.h"
 
 #ifndef NI_MAXSERV
 # define NI_MAXSERV 32
@@ -52,32 +55,6 @@ int mongo_read_socket( mongo *conn, void *buf, int len ) {
         }
         cbuf += sent;
         len -= sent;
-    }
-
-    return MONGO_OK;
-}
-
-static int mongo_set_blocking_status( mongo *conn ) {
-    int flags;
-    int blocking;
-
-    blocking = ( conn->conn_timeout_ms == 0 );
-    if( blocking )
-        return MONGO_OK;
-    else {
-        if( ( flags = fcntl( conn->sock, F_GETFL ) ) == -1 ) {
-            conn->err = MONGO_IO_ERROR;
-            mongo_close_socket( conn->sock );
-            return MONGO_ERROR;
-        }
-
-        flags |= O_NONBLOCK;
-
-        if( ( flags = fcntl( conn->sock, F_SETFL, flags ) ) == -1 ) {
-            conn->err = MONGO_IO_ERROR;
-            mongo_close_socket( conn->sock );
-            return MONGO_ERROR;
-        }
     }
 
     return MONGO_OK;
