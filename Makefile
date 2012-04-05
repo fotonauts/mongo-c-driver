@@ -16,7 +16,7 @@
 
 # Version
 MONGO_MAJOR=0
-MONGO_MINOR=4
+MONGO_MINOR=5
 BSON_MAJOR=$(MONGO_MAJOR)
 BSON_MINOR=$(MONGO_MINOR)
 
@@ -29,14 +29,14 @@ TESTS=test/auth_test test/bson_test test/bson_subobject_test test/count_delete_t
   test/cursors_test test/endian_swap_test test/errors_test test/examples_test \
   test/functions_test test/gridfs_test test/helpers_test \
   test/oid_test test/resize_test test/simple_test test/sizes_test test/update_test \
-  test/validate_test
+  test/validate_test test/timeout_test
 MONGO_OBJECTS=src/bson.o src/encoding.o src/gridfs.o src/md5.o src/mongo.o \
  src/numbers.o src/env_posix.o
-BSON_OBJECTS=src/bson.o src/numbers.o
+BSON_OBJECTS=src/bson.o src/numbers.o src/encoding.o
 
 # Compile flags
 ALL_DEFINES=$(DEFINES)
-ALL_DEFINES+=-DMONGO_USE_GETADDRINFO
+ALL_DEFINES+=-D_POSIX_SOURCE
 CC:=$(shell sh -c 'type $(CC) >/dev/null 2>/dev/null && echo $(CC) || echo gcc')
 
 # Endianness check
@@ -65,7 +65,8 @@ TEST_DEFINES+=-DTEST_SERVER="\"127.0.0.1\""
 OPTIMIZATION?=-O3
 WARNINGS?=-Wall
 DEBUG?=-ggdb
-ALL_CFLAGS=$(CFLAGS) $(OPTIMIZATION) $(WARNINGS) $(DEBUG) $(ALL_DEFINES)
+STD?=c99
+ALL_CFLAGS=-std=$(STD) $(CFLAGS) $(OPTIMIZATION) $(WARNINGS) $(DEBUG) $(ALL_DEFINES)
 ALL_LDFLAGS=$(LDFLAGS)
 
 # Shared libraries
@@ -79,7 +80,7 @@ MONGO_DYLIB_MAKE_CMD=$(CC) -shared -Wl,-soname,$(MONGO_DYLIB_MINOR_NAME) -o $(MO
 BSON_DYLIBNAME=$(BSON_LIBNAME).$(DYLIBSUFFIX)
 BSON_DYLIB_MINOR_NAME=$(BSON_LIBNAME).$(DYLIBSUFFIX).$(BSON_MAJOR).$(BSON_MINOR)
 BSON_DYLIB_MAJOR_NAME=$(BSON_LIBNAME).$(DYLIBSUFFIX).$(BSON_MAJOR)
-BSON_DYLIB_MAKE_CMD=$(CC) -shared -Wl,-soname,$(BSON_DYLIBNAME_VERSIONED) -o $(BSON_DYLIBNAME) $(ALL_LDFLAGS)
+BSON_DYLIB_MAKE_CMD=$(CC) -shared -Wl,-soname,$(BSON_DYLIB_MINOR_NAME) -o $(BSON_DYLIBNAME) $(ALL_LDFLAGS)
 
 # Static libraries
 MONGO_STLIBNAME=$(MONGO_LIBNAME).$(STLIBSUFFIX)
@@ -94,6 +95,7 @@ ifeq ($(kernel_name),SunOS)
     BSON_DYLIB_MAKE_CMD=$(CC) -G -o $(BSON_DYLIBNAME) -h $(BSON_DYLIB_MINOR_NAME) $(ALL_LDFLAGS)
 endif
 ifeq ($(kernel_name),Darwin)
+		ALL_CFLAGS+=-std=$(STD) $(CFLAGS) $(OPTIMIZATION) $(WARNINGS) $(DEBUG) $(ALL_DEFINES) -DMONGO_OSX_
     DYLIBSUFFIX=dylib
     MONGO_DYLIB_MINOR_NAME=$(MONGO_LIBNAME).$(DYLIBSUFFIX).$(MONGO_MAJOR).$(MONGO_MINOR)
     MONGO_DYLIB_MAJOR_NAME=$(MONGO_LIBNAME).$(DYLIBSUFFIX).$(MONGO_MAJOR)
@@ -101,7 +103,7 @@ ifeq ($(kernel_name),Darwin)
 
     BSON_DYLIB_MINOR_NAME=$(BSON_LIBNAME).$(DYLIBSUFFIX).$(BSON_MAJOR).$(BSON_MINOR)
     BSON_DYLIB_MAJOR_NAME=$(BSON_LIBNAME).$(DYLIBSUFFIX).$(BSON_MAJOR)
-    BSON_DYLIB_NAME_CMD=$(CC) -shared -Wl,-install_name,$(BSON_DYLIB_MINOR_NAME) -o $(BSON_DYLIBNAME)
+    BSON_DYLIB_MAKE_CMD=$(CC) -shared -Wl,-install_name,$(BSON_DYLIB_MINOR_NAME) -o $(BSON_DYLIBNAME)
 endif
 
 # Installation
@@ -116,16 +118,13 @@ INSTALL_LIBRARY_PATH?=/usr/local/lib
 all: $(MONGO_DYLIBNAME) $(BSON_DYLIBNAME) $(MONGO_STLIBNAME) $(BSON_STLIBNAME)
 
 # Dependency targets. Run 'make deps' to generate these.
-bson.o: src/bson.c src/bson.h src/platform.h src/encoding.h
-encoding.o: src/encoding.c src/bson.h src/platform.h src/encoding.h
-env_default.o: src/env_default.c src/env.h src/mongo.h src/bson.h \
- src/platform.h
-env_posix.o: src/env_posix.c src/env.h src/mongo.h src/bson.h \
- src/platform.h
-gridfs.o: src/gridfs.c src/gridfs.h src/mongo.h src/bson.h src/platform.h
+bson.o: src/bson.c src/bson.h src/encoding.h
+encoding.o: src/encoding.c src/bson.h src/encoding.h
+env_default.o: src/env_default.c src/env.h src/mongo.h src/bson.h
+env_posix.o: src/env_posix.c src/env.h src/mongo.h src/bson.h
+gridfs.o: src/gridfs.c src/gridfs.h src/mongo.h src/bson.h
 md5.o: src/md5.c src/md5.h
-mongo.o: src/mongo.c src/mongo.h src/bson.h src/platform.h src/md5.h \
- src/env.h
+mongo.o: src/mongo.c src/mongo.h src/bson.h src/md5.h src/env.h
 numbers.o: src/numbers.c
 
 $(MONGO_DYLIBNAME): $(MONGO_OBJECTS)
@@ -156,6 +155,9 @@ test: $(TESTS)
 valgrind: $(TESTS)
 	sh runtests.sh -v
 
+docs:
+	python docs/buildscripts/docs.py
+
 clean:
 	rm -rf $(MONGO_DYLIBNAME) $(MONGO_STLIBNAME) $(BSON_DYLIBNAME) $(BSON_STLIBNAME) src/*.o test/*_test
 
@@ -171,4 +173,4 @@ deps:
 %.o: %.c
 	$(CC) -o $@ -c $(ALL_CFLAGS) $<
 
-.PHONY: clean
+.PHONY: clean docs

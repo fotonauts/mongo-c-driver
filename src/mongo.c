@@ -17,23 +17,14 @@
 
 #include "mongo.h"
 #include "md5.h"
+#include "env.h"
 
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 
-#ifdef _USE_LINUX_SYSTEM
-#include "env_posix.h"
-#elif defined _USE_CUSTOM_SYSTEM
-#include "env.h"
-#else
-#include "env.h"
-#endif
-
-
-
-MONGO_EXPORT mongo* mongo_create( void ) {
+MONGO_EXPORT mongo* mongo_create() {
     return (mongo*)bson_malloc(sizeof(mongo));
 }
 
@@ -583,11 +574,9 @@ MONGO_EXPORT void mongo_destroy( mongo *conn ) {
     }
 
     bson_free( conn->primary );
-    bson_free( conn->errstr );
     bson_free( conn->lasterrstr );
 
     conn->err = 0;
-    conn->errstr = NULL;
     conn->lasterrcode = 0;
     conn->lasterrstr = NULL;
 }
@@ -615,7 +604,6 @@ static int mongo_bson_valid( mongo *conn, bson *bson, int write ) {
     }
 
     conn->err = 0;
-    conn->errstr = NULL;
 
     return MONGO_OK;
 }
@@ -642,10 +630,10 @@ static int mongo_cursor_bson_valid( mongo_cursor *cursor, bson *bson ) {
 MONGO_EXPORT int mongo_insert_batch( mongo *conn, const char *ns,
                         bson **bsons, int count ) {
 
-    size_t size =  16 + 4 + strlen( ns ) + 1;
-    int i;
     mongo_message *mm;
+    int i;
     char *data;
+    int size =  16 + 4 + strlen( ns ) + 1;
 
     for( i=0; i<count; i++ ) {
         size += bson_size( bsons[i] );
@@ -1387,8 +1375,8 @@ MONGO_EXPORT int mongo_cmd_drop_db( mongo *conn, const char *db ) {
     return mongo_simple_int_command( conn, db, "dropDatabase", 1, NULL );
 }
 
-MONGO_EXPORT int mongo_cmd_drop_collection( mongo *conn, const char *db, const char *collection ) {
-    return mongo_simple_str_command( conn, db, "drop", collection, NULL );
+MONGO_EXPORT int mongo_cmd_drop_collection( mongo *conn, const char *db, const char *collection, bson *out ) {
+    return mongo_simple_str_command( conn, db, "drop", collection, out );
 }
 
 MONGO_EXPORT int mongo_cmd_create_collection( mongo *conn, const char *db, const char *collection ) {

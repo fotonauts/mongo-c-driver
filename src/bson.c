@@ -527,7 +527,13 @@ MONGO_EXPORT bson_bool_t bson_iterator_bool( const bson_iterator *i ) {
 }
 
 MONGO_EXPORT const char *bson_iterator_string( const bson_iterator *i ) {
-    return bson_iterator_value( i ) + 4;
+    switch ( bson_iterator_type( i ) ) {
+    case BSON_STRING:
+    case BSON_SYMBOL:
+        return bson_iterator_value( i ) + 4;
+    default:
+        return "";
+    }
 }
 
 int bson_iterator_string_len( const bson_iterator *i ) {
@@ -1051,4 +1057,29 @@ void bson_numstr( char *str, int i ) {
         memcpy( str, bson_numstrs[i], 4 );
     else
         bson_sprintf( str,"%d", i );
+}
+
+MONGO_EXPORT void bson_swap_endian64( void *outp, const void *inp ) {
+    const char *in = ( const char * )inp;
+    char *out = ( char * )outp;
+
+    out[0] = in[7];
+    out[1] = in[6];
+    out[2] = in[5];
+    out[3] = in[4];
+    out[4] = in[3];
+    out[5] = in[2];
+    out[6] = in[1];
+    out[7] = in[0];
+
+}
+
+MONGO_EXPORT void bson_swap_endian32( void *outp, const void *inp ) {
+    const char *in = ( const char * )inp;
+    char *out = ( char * )outp;
+
+    out[0] = in[3];
+    out[1] = in[2];
+    out[2] = in[1];
+    out[3] = in[0];
 }
