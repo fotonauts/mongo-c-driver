@@ -1,6 +1,6 @@
-/* env_default.c */
+/* env_standard.c */
 
-/*    Copyright 2009-2011 10gen Inc.
+/*    Copyright 2009-2012 10gen Inc.
  *
  *    Licensed under the Apache License, Version 2.0 (the "License");
  *    you may not use this file except in compliance with the License.
@@ -15,12 +15,32 @@
  *    limitations under the License.
  */
 
-/* Networking and other niceties for all systems. */
+/* Vanilla networking designed to work on all systems. */
 #include "env.h"
 #include <errno.h>
 #include <string.h>
 #include <errno.h>
 #include <signal.h>
+
+#ifdef _WIN32
+    #ifdef _MSC_VER
+        #include <ws2tcpip.h>  // send,recv,socklen_t etc
+        #include <wspiapi.h>   // addrinfo
+    #else
+        #include <windows.h>
+        #include <winsock.h>
+        typedef int socklen_t;
+    #endif
+#else
+#include <arpa/inet.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netdb.h>
+#include <netinet/in.h>
+#include <netinet/tcp.h>
+#include <fcntl.h>
+#include <unistd.h>
+#endif
 
 #ifndef NI_MAXSERV
 # define NI_MAXSERV 32
@@ -29,15 +49,24 @@
 # define MSG_NOSIGNAL 0
 #endif
 
-int mongo_write_socket( mongo *conn, const void *buf, size_t len ) {
+int mongo_env_close_socket( int socket ) {
+#ifdef _WIN32
+    return closesocket( socket );
+#else
+    return close( socket );
+#endif
+}
+
+int mongo_env_write_socket( mongo *conn, const void *buf, size_t len ) {
     const char *cbuf = buf;
 #ifdef _WIN32
     int flags = 0;
-#endif
-#ifdef MONGO_OSX_
+#else
+#ifdef __APPLE__
     int flags = 0;
 #else
     int flags = MSG_NOSIGNAL;
+#endif
 #endif
 
     while ( len ) {
@@ -55,7 +84,7 @@ int mongo_write_socket( mongo *conn, const void *buf, size_t len ) {
     return MONGO_OK;
 }
 
-int mongo_read_socket( mongo *conn, void *buf, size_t len ) {
+int mongo_env_read_socket( mongo *conn, void *buf, size_t len ) {
     char *cbuf = buf;
     while ( len ) {
         size_t sent = recv( conn->sock, cbuf, len, 0 );
@@ -71,78 +100,13 @@ int mongo_read_socket( mongo *conn, void *buf, size_t len ) {
 }
 
 /* This is a no-op in the generic implementation. */
-int mongo_set_socket_op_timeout( mongo *conn, int millis ) {
+int mongo_env_set_socket_op_timeout( mongo *conn, int millis ) {
     return MONGO_OK;
 }
 
-#ifdef _MONGO_USE_GETADDRINFO
-int mongo_socket_connect( mongo *conn, const char *host, int port ) {
-    char port_str[NI_MAXSERV];
-    int status;
-
-    struct addrinfo ai_hints;
-    struct addrinfo *ai_list = NULL;
-    struct addrinfo *ai_ptr = NULL;
-
-    conn->sock = 0;
-    conn->connected = 0;
-
-    bson_sprintf( port_str, "%d", port );
-
-    memset( &ai_hints, 0, sizeof( ai_hints ) );
-#ifdef AI_ADDRCONFIG
-    ai_hints.ai_flags = AI_ADDRCONFIG;
-#endif
-    ai_hints.ai_family = AF_UNSPEC;
-    ai_hints.ai_socktype = SOCK_STREAM;
-
-    status = getaddrinfo( host, port_str, &ai_hints, &ai_list );
-    if ( status != 0 ) {
-        bson_errprintf( "getaddrinfo failed: %s", gai_strerror( status ) );
-        conn->err = MONGO_CONN_ADDR_FAIL;
-        return MONGO_ERROR;
-    }
-
-    for ( ai_ptr = ai_list; ai_ptr != NULL; ai_ptr = ai_ptr->ai_next ) {
-        conn->sock = socket( ai_ptr->ai_family, ai_ptr->ai_socktype, ai_ptr->ai_protocol );
-        if ( conn->sock < 0 ) {
-            conn->sock = 0;
-            continue;
-        }
-
-        status = connect( conn->sock, ai_ptr->ai_addr, ai_ptr->ai_addrlen );
-        if ( status != 0 ) {
-            mongo_close_socket( conn->sock );
-            conn->sock = 0;
-            continue;
-        }
-
-        if ( ai_ptr->ai_protocol == IPPROTO_TCP ) {
-            int flag = 1;
-
-            setsockopt( conn->sock, IPPROTO_TCP, TCP_NODELAY,
-                        ( void * ) &flag, sizeof( flag ) );
-            if ( conn->op_timeout_ms > 0 )
-                mongo_set_socket_op_timeout( conn, conn->op_timeout_ms );
-        }
-
-        conn->connected = 1;
-        break;
-    }
-
-    freeaddrinfo( ai_list );
-
-    if ( ! conn->connected ) {
-        conn->err = MONGO_CONN_FAIL;
-        return MONGO_ERROR;
-    }
-
-    return MONGO_OK;
-}
-
-#else
-int mongo_socket_connect( mongo *conn, const char *host, int port ) {
-    struct addrinfo req, *ans = NULL, *ans_cursor;
+int mongo_env_socket_connect( mongo *conn, const char *host, int port ) {
+    struct sockaddr_in sa;
+    socklen_t addressSize;
     int flag = 1;
 
     if ( ( conn->sock = socket( AF_INET, SOCK_STREAM, 0 ) ) < 0 ) {
@@ -157,9 +121,8 @@ int mongo_socket_connect( mongo *conn, const char *host, int port ) {
         if ( conn->op_timeout_ms > 0 )
             mongo_set_socket_op_timeout( conn, conn->op_timeout_ms );
 
-        conn->connected = 1;
-        return MONGO_OK;
-    } else {
+    if ( connect( conn->sock, ( struct sockaddr * )&sa, addressSize ) == -1 ) {
+        mongo_env_close_socket( conn->sock );
         conn->connected = 0;
         conn->sock = 0;
         conn->err = MONGO_CONN_FAIL;
@@ -169,16 +132,14 @@ int mongo_socket_connect( mongo *conn, const char *host, int port ) {
     setsockopt( conn->sock, IPPROTO_TCP, TCP_NODELAY, ( char * ) &flag, sizeof( flag ) );
 
     if( conn->op_timeout_ms > 0 )
-        mongo_set_socket_op_timeout( conn, conn->op_timeout_ms );
+        mongo_env_set_socket_op_timeout( conn, conn->op_timeout_ms );
 
     conn->connected = 1;
 
     return MONGO_OK;
 }
 
-#endif
-
-MONGO_EXPORT int mongo_sock_init( void ) {
+MONGO_EXPORT int mongo_env_sock_init( void ) {
 
 #if defined(_WIN32)
     WSADATA wsaData;

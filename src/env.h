@@ -1,6 +1,6 @@
 /** @file env.h */
 
-/*    Copyright 2009-2011 10gen Inc.
+/*    Copyright 2009-2012 10gen Inc.
  *
  *    Licensed under the Apache License, Version 2.0 (the "License");
  *    you may not use this file except in compliance with the License.
@@ -21,44 +21,19 @@
 
 #include "mongo.h"
 
-#ifdef _WIN32
-    #ifdef _MSC_VER
-        #include <ws2tcpip.h>  // send,recv,socklen_t etc
-        #include <wspiapi.h>   // addrinfo
-    #else
-        #include <windows.h>
-        #include <winsock.h>
-        typedef int socklen_t;
-    #endif
-#define mongo_close_socket(sock) ( closesocket(sock) )
-#else
-#include <arpa/inet.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <netdb.h>
-#include <netinet/in.h>
-#include <netinet/tcp.h>
-#include <fcntl.h>
-#define mongo_close_socket(sock) ( close(sock) )
-#endif
-
-#ifndef _WIN32
-#include <unistd.h>
-#endif
-
-#if defined(_XOPEN_SOURCE) || defined(_POSIX_SOURCE) || _POSIX_C_SOURCE >= 1
-#define _MONGO_USE_GETADDRINFO
-#endif
-
 MONGO_EXTERN_C_START
 
 /* This is a no-op in the generic implementation. */
-int mongo_set_socket_op_timeout( mongo *conn, int millis );
-int mongo_read_socket( mongo *conn, void *buf, size_t len );
-int mongo_write_socket( mongo *conn, const void *buf, size_t len );
-int mongo_socket_connect( mongo *conn, const char *host, int port );
+int mongo_env_set_socket_op_timeout( mongo *conn, int millis );
+int mongo_env_read_socket( mongo *conn, void *buf, size_t len );
+int mongo_env_write_socket( mongo *conn, const void *buf, size_t len );
+int mongo_env_socket_connect( mongo *conn, const char *host, int port );
 
-/* Initialize the socket services */
-MONGO_EXPORT int mongo_sock_init( void );
+/* Initialize socket services */
+MONGO_EXPORT int mongo_env_sock_init( void );
+
+/* Close a socket */
+MONGO_EXPORT int mongo_env_close_socket( int socket );
+
 MONGO_EXTERN_C_END
 #endif

@@ -34,7 +34,7 @@ int main() {
 
     INIT_SOCKETS_FOR_WINDOWS;
 
-    if ( mongo_connect( conn , TEST_SERVER, 27017 ) ) {
+    if ( mongo_connect( conn, TEST_SERVER, 27017 ) ) {
         printf( "failed to connect\n" );
         exit( 1 );
     }
@@ -109,7 +109,7 @@ int main() {
     for ( j=0; j < BATCH_SIZE; j++ )
         make_small_invalid( &bs[j], i );
 
-    result = mongo_insert_batch( conn, ns, bp, BATCH_SIZE );
+    result = mongo_insert_batch( conn, ns, (const bson **)bp, BATCH_SIZE );
     ASSERT( result == MONGO_ERROR );
     ASSERT( conn->err == MONGO_BSON_INVALID );
 

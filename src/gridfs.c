@@ -1,6 +1,6 @@
 /* gridfs.c */
 
-/*    Copyright 2009-2011 10gen Inc.
+/*    Copyright 2009-2012 10gen Inc.
  *
  *    Licensed under the Apache License, Version 2.0 (the "License");
  *    you may not use this file except in compliance with the License.
@@ -97,6 +97,7 @@ int gridfs_init( mongo *client, const char *dbname, const char *prefix,
     bson_append_int( &b, "filename", 1 );
     bson_finish( &b );
     options = 0;
+//    MONGO_EXPORmongo_create_index( mongo *conn, const char *ns, const bson *key, int options, bson *out ) {
     success = ( mongo_create_index( gfs->client, gfs->files_ns, NULL, &b, options, NULL ) == MONGO_OK );
     bson_destroy( &b );
     if ( !success ) {
@@ -246,14 +247,13 @@ MONGO_EXPORT void gridfile_write_buffer( gridfile *gfile, const char *data,
         gfile->pending_len += length;
 
     } else { /* At least one chunk of data to write */
+        chunks_to_write = to_write / DEFAULT_CHUNK_SIZE;
+        bytes_left = to_write % DEFAULT_CHUNK_SIZE;
 
         /* If there's a pending chunk to be written, we need to combine
          * the buffer provided up to DEFAULT_CHUNK_SIZE.
          */
         if ( gfile->pending_len > 0 ) {
-            chunks_to_write = to_write / DEFAULT_CHUNK_SIZE;
-            bytes_left = to_write % DEFAULT_CHUNK_SIZE;
-
             data_partial_len = DEFAULT_CHUNK_SIZE - gfile->pending_len;
             buffer = ( char * )bson_malloc( DEFAULT_CHUNK_SIZE );
             memcpy( buffer, gfile->pending_data, gfile->pending_len );
@@ -645,7 +645,7 @@ gridfs_offset gridfile_write_file( gridfile *gfile, FILE *stream ) {
         bson_find( &it, &chunk, "data" );
         len = bson_iterator_bin_len( &it );
         data = bson_iterator_bin_data( &it );
-        fwrite( data , sizeof( char ), len, stream );
+        fwrite( data, sizeof( char ), len, stream );
         bson_destroy( &chunk );
     }
 

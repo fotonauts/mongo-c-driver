@@ -234,6 +234,8 @@ int test_bson_generic() {
    ASSERT( !bson_iterator_more( &it ) );
 
    bson_destroy( b );
+
+   return 0;
 }
 
 int test_bson_iterator() {
@@ -249,10 +251,23 @@ int test_bson_iterator() {
     return 0;
 }
 
+int test_bson_size( void ) {
+    bson bsmall[1];
+
+    bson_init( bsmall );
+    bson_append_int( bsmall, "a", 1 );
+    bson_finish( bsmall );
+    
+    ASSERT( bson_size( bsmall ) == 12 );
+
+    return 0;
+}
+
 int main() {
 
   test_bson_generic();
   test_bson_iterator();
+  test_bson_size();
 
   return 0;
 }

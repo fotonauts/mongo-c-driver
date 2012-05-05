@@ -24,15 +24,25 @@ BSON_MINOR=$(MONGO_MINOR)
 MONGO_LIBNAME=libmongoc
 BSON_LIBNAME=libbson
 
+# Standard or posix env.
+ENV?=posix
+
 # TODO: add replica set test, cpp test, platform tests, json_test
 TESTS=test/auth_test test/bson_test test/bson_subobject_test test/count_delete_test \
   test/cursors_test test/endian_swap_test test/errors_test test/examples_test \
   test/functions_test test/gridfs_test test/helpers_test \
   test/oid_test test/resize_test test/simple_test test/sizes_test test/update_test \
-  test/validate_test test/timeout_test
+  test/validate_test
 MONGO_OBJECTS=src/bson.o src/encoding.o src/gridfs.o src/md5.o src/mongo.o \
- src/numbers.o src/env_posix.o
+ src/numbers.o
 BSON_OBJECTS=src/bson.o src/numbers.o src/encoding.o
+
+ifeq ($(ENV),posix)
+    TESTS+=test/env_posix_test
+    MONGO_OBJECTS+=src/env_posix.o
+else
+    MONGO_OBJECTS+=src/env_standard.o
+endif
 
 # Compile flags
 ALL_DEFINES=$(DEFINES)
@@ -44,8 +54,6 @@ endian := $(shell sh -c 'echo "ab" | od -x | grep "6261" >/dev/null && echo litt
 ifeq ($(endian),big)
     ALL_DEFINES+=-DMONGO_BIG_ENDIAN
 endif
-
-# Posix settings
 
 # Int64 type check
 int64:=$(shell ./check_int64.sh $(CC) stdint.h && echo stdint)
@@ -66,7 +74,8 @@ OPTIMIZATION?=-O3
 WARNINGS?=-Wall
 DEBUG?=-ggdb
 STD?=c99
-ALL_CFLAGS=-std=$(STD) $(CFLAGS) $(OPTIMIZATION) $(WARNINGS) $(DEBUG) $(ALL_DEFINES)
+PEDANTIC?=-pedantic
+ALL_CFLAGS=-std=$(STD) $(PEDANTIC) $(CFLAGS) $(OPTIMIZATION) $(WARNINGS) $(DEBUG) $(ALL_DEFINES)
 ALL_LDFLAGS=$(LDFLAGS)
 
 # Shared libraries
@@ -95,7 +104,7 @@ ifeq ($(kernel_name),SunOS)
     BSON_DYLIB_MAKE_CMD=$(CC) -G -o $(BSON_DYLIBNAME) -h $(BSON_DYLIB_MINOR_NAME) $(ALL_LDFLAGS)
 endif
 ifeq ($(kernel_name),Darwin)
-		ALL_CFLAGS+=-std=$(STD) $(CFLAGS) $(OPTIMIZATION) $(WARNINGS) $(DEBUG) $(ALL_DEFINES) -DMONGO_OSX_
+    ALL_CFLAGS+=-std=$(STD) $(CFLAGS) $(OPTIMIZATION) $(WARNINGS) $(DEBUG) $(ALL_DEFINES)
     DYLIBSUFFIX=dylib
     MONGO_DYLIB_MINOR_NAME=$(MONGO_LIBNAME).$(DYLIBSUFFIX).$(MONGO_MAJOR).$(MONGO_MINOR)
     MONGO_DYLIB_MAJOR_NAME=$(MONGO_LIBNAME).$(DYLIBSUFFIX).$(MONGO_MAJOR)
@@ -120,7 +129,7 @@ all: $(MONGO_DYLIBNAME) $(BSON_DYLIBNAME) $(MONGO_STLIBNAME) $(BSON_STLIBNAME)
 # Dependency targets. Run 'make deps' to generate these.
 bson.o: src/bson.c src/bson.h src/encoding.h
 encoding.o: src/encoding.c src/bson.h src/encoding.h
-env_default.o: src/env_default.c src/env.h src/mongo.h src/bson.h
+env_standard.o: src/env_standard.c src/env.h src/mongo.h src/bson.h
 env_posix.o: src/env_posix.c src/env.h src/mongo.h src/bson.h
 gridfs.o: src/gridfs.c src/gridfs.h src/mongo.h src/bson.h
 md5.o: src/md5.c src/md5.h
@@ -168,7 +177,7 @@ deps:
 	$(MAKE) CFLAGS="-m32" LDFLAGS="-pg"
 
 %_test: %_test.c $(MONGO_STLIBNAME)
-	$(CC) -o $@ -Isrc $(TEST_DEFINES) $(ALL_LDFLAGS) $< $(MONGO_STLIBNAME)
+	$(CC) -o $@ -L. -Isrc $(TEST_DEFINES) $(ALL_LDFLAGS) $< $(MONGO_STLIBNAME)
 
 %.o: %.c
 	$(CC) -o $@ -c $(ALL_CFLAGS) $<
