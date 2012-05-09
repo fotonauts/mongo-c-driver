@@ -1465,7 +1465,6 @@ MONGO_EXPORT bson_bool_t mongo_run_command( mongo *conn, const char *db, const b
             success = bson_iterator_bool( &it );
 
         if( bson_find( &it, &response, "errmsg" ) ) {
-            bson_free( conn->lasterrstr );
             strncpy( conn->lasterrstr, bson_iterator_string( &it ), sizeof( conn->lasterrstr ) );
             conn->lasterrstr[sizeof( conn->lasterrstr ) - 1] = 0;
         }
