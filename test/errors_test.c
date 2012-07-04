@@ -105,7 +105,7 @@ int test_namespace_validation_on_insert( void ) {
     bson_append_int( b, "foo", 1 );
     bson_finish( b );
 
-    ASSERT( mongo_insert( conn, "tet.fo$o", b ) == MONGO_ERROR );
+    ASSERT( mongo_insert( conn, "tet.fo$o", b, NULL ) == MONGO_ERROR );
     ASSERT( conn->err == MONGO_NS_INVALID );
     ASSERT( strncmp( conn->errstr, "Collection may not contain '$'", 29 ) == 0 );
     mongo_clear_errors( conn );
@@ -117,9 +117,14 @@ int test_namespace_validation_on_insert( void ) {
     objs[0] = b;
     objs[1] = b2;
 
-    ASSERT( mongo_insert_batch( conn, "tet.fo$o", (const bson **)objs, 2 ) == MONGO_ERROR );
+    ASSERT( mongo_insert_batch( conn, "tet.fo$o",
+          (const bson **)objs, 2, NULL, 0 ) == MONGO_ERROR );
     ASSERT( conn->err == MONGO_NS_INVALID );
     ASSERT( strncmp( conn->errstr, "Collection may not contain '$'", 29 ) == 0 );
+
+    bson_destroy( b );
+    bson_destroy( b2 );
+    mongo_destroy( conn );
 
     return 0;
 }
@@ -156,7 +161,7 @@ int test_insert_limits( void ) {
 
     ASSERT( bson_size( b ) > conn->max_bson_size );
 
-    ASSERT( mongo_insert( conn, "test.foo", b ) == MONGO_ERROR );
+    ASSERT( mongo_insert( conn, "test.foo", b, NULL ) == MONGO_ERROR );
     ASSERT( conn->err == MONGO_BSON_TOO_LARGE );
 
     mongo_clear_errors( conn );
@@ -169,8 +174,13 @@ int test_insert_limits( void ) {
     objs[0] = b;
     objs[1] = b2;
 
-    ASSERT( mongo_insert_batch( conn, "test.foo", (const bson **)objs, 2 ) == MONGO_ERROR );
+    ASSERT( mongo_insert_batch( conn, "test.foo", (const bson **)objs, 2,
+          NULL, 0 ) == MONGO_ERROR );
     ASSERT( conn->err == MONGO_BSON_TOO_LARGE );
+
+    bson_destroy( b );
+    bson_destroy( b2 );
+    mongo_destroy( conn );
 
     return 0;
 }

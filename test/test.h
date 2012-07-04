@@ -4,7 +4,15 @@
 #define ASSERT(x) \
     do{ \
         if(!(x)){ \
-            printf("failed assert (%d): %s\n", __LINE__,  #x); \
+            printf("\nFailed ASSERT [%s] (%d):\n     %s\n\n", __FILE__,  __LINE__,  #x); \
+            exit(1); \
+        }\
+    }while(0)
+
+#define ASSERT_EQUAL_STRINGS(x, y) \
+    do{ \
+        if((strncmp( x, y, strlen( y ) ) != 0 )){ \
+            printf("\nFailed ASSERT_EQUAL_STRINGS [%s] (%d):\n  \"%s\" does not equal\n  %s\n", __FILE__,  __LINE__,  x, #y); \
             exit(1); \
         }\
     }while(0)
@@ -15,9 +23,14 @@
 #define INIT_SOCKETS_FOR_WINDOWS do {} while(0)
 #endif
 
+const char *TEST_DB = "test";
+const char *TEST_COL = "foo";
+const char *TEST_NS = "test.foo";
+
 MONGO_EXTERN_C_START
 
 int mongo_get_server_version( char *version ) {
+    int ret = 0;
     mongo conn[1];
     bson cmd[1], out[1];
     bson_iterator it[1];
@@ -30,14 +43,17 @@ int mongo_get_server_version( char *version ) {
     bson_finish( cmd );
 
     if( mongo_run_command( conn, "admin", cmd, out ) == MONGO_ERROR ) {
-        return -1;
+        ret = -1;
     }
+    else {
+        bson_iterator_init( it, out );
+        result = bson_iterator_string( it );
 
-    bson_iterator_init( it, out );
-    result = bson_iterator_string( it );
-
-    memcpy( version, result, strlen( result ) );
-
+        memcpy( version, result, strlen( result ) );
+        bson_destroy( out );
+    }
+    bson_destroy( cmd );
+    mongo_destroy( conn );
     return 0;
 }
 

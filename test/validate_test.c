@@ -42,8 +42,9 @@ int main() {
     /* Test checking for finished bson. */
     bson_init( &b );
     bson_append_int( &b, "foo", 1 );
-    ASSERT( mongo_insert( conn, "test.foo", &b ) == MONGO_ERROR );
+    ASSERT( mongo_insert( conn, "test.foo", &b, NULL ) == MONGO_ERROR );
     ASSERT( conn->err == MONGO_BSON_NOT_FINISHED );
+    bson_destroy( &b );
 
     /* Test valid keys. */
     bson_init( &b );
@@ -51,6 +52,19 @@ int main() {
     ASSERT( result == BSON_OK );
 
     ASSERT( b.err & BSON_FIELD_HAS_DOT );
+
+    /* Don't set INIT dollar if deb ref fields are being used. */
+    result = bson_append_string( &b , "$id" , "17" );
+    ASSERT( result == BSON_OK );
+    ASSERT( !(b.err & BSON_FIELD_INIT_DOLLAR) );
+
+    result = bson_append_string( &b , "$ref" , "17" );
+    ASSERT( result == BSON_OK );
+    ASSERT( !(b.err & BSON_FIELD_INIT_DOLLAR) );
+
+    result = bson_append_string( &b , "$db" , "17" );
+    ASSERT( result == BSON_OK );
+    ASSERT( !(b.err & BSON_FIELD_INIT_DOLLAR) );
 
     result = bson_append_string( &b , "$ab" , "17" );
     ASSERT( result == BSON_OK );
@@ -69,11 +83,11 @@ int main() {
     ASSERT( b.err & BSON_FIELD_INIT_DOLLAR );
     ASSERT( b.err & BSON_NOT_UTF8 );
 
-    result = mongo_insert( conn, ns, &b );
+    result = mongo_insert( conn, ns, &b, NULL );
     ASSERT( result == MONGO_ERROR );
     ASSERT( conn->err & MONGO_BSON_NOT_FINISHED );
 
-    result = mongo_update( conn, ns, bson_empty( &empty ), &b, 0 );
+    result = mongo_update( conn, ns, bson_empty( &empty ), &b, 0, NULL );
     ASSERT( result == MONGO_ERROR );
     ASSERT( conn->err & MONGO_BSON_NOT_FINISHED );
 
@@ -85,9 +99,10 @@ int main() {
     ASSERT( cursor->conn->err & MONGO_BSON_NOT_FINISHED );
 
     bson_destroy( &b );
+    mongo_cursor_destroy( cursor );
 
     /* Test valid strings. */
-    bson_init( & b );
+    bson_init( &b );
     result = bson_append_string( &b , "foo" , "bar" );
     ASSERT( result == BSON_OK );
     ASSERT( b.err == 0 );
@@ -109,13 +124,14 @@ int main() {
     for ( j=0; j < BATCH_SIZE; j++ )
         make_small_invalid( &bs[j], i );
 
-    result = mongo_insert_batch( conn, ns, (const bson **)bp, BATCH_SIZE );
+    result = mongo_insert_batch( conn, ns, (const bson **)bp, BATCH_SIZE, NULL, 0 );
     ASSERT( result == MONGO_ERROR );
     ASSERT( conn->err == MONGO_BSON_INVALID );
 
     for ( j=0; j < BATCH_SIZE; j++ )
         bson_destroy( &bs[j] );
 
+    bson_destroy( &b );
     mongo_cmd_drop_db( conn, "test" );
     mongo_disconnect( conn );
 

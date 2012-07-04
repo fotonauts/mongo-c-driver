@@ -36,7 +36,7 @@ int main() {
         bson_append_int( &b , "a" , i+1 ); /* 1 to 5 */
         bson_finish( &b );
 
-        mongo_insert( conn , ns , &b );
+        mongo_insert( conn , ns , &b, NULL );
         bson_destroy( &b );
     }
 
@@ -52,7 +52,7 @@ int main() {
     ASSERT( mongo_count( conn, db, col, NULL ) == 5 );
     ASSERT( mongo_count( conn, db, col, &b ) == 2 );
 
-    mongo_remove( conn, ns, &b );
+    mongo_remove( conn, ns, &b, NULL );
 
     ASSERT( mongo_count( conn, db, col, NULL ) == 3 );
     ASSERT( mongo_count( conn, db, col, &b ) == 0 );

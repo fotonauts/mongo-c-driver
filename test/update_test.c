@@ -35,7 +35,7 @@ int main() {
         bson_append_oid( &obj, "_id", &oid );
         bson_append_int( &obj, "a", 3 );
         bson_finish( &obj );
-        mongo_insert( conn, ns, &obj );
+        mongo_insert( conn, ns, &obj, NULL );
         bson_destroy( &obj );
     }
 
@@ -61,7 +61,7 @@ int main() {
         bson_finish( &op );
 
         for ( i=0; i<5; i++ )
-            mongo_update( conn, ns, &cond, &op, 0 );
+            mongo_update( conn, ns, &cond, &op, 0, NULL );
 
         /* cond is used later */
         bson_destroy( &op );
