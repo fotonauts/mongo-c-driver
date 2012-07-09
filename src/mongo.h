@@ -783,6 +783,7 @@ bson_bool_t mongo_cmd_rename_collection( mongo *conn, const char *db, const char
  * @param conn a mongo object.
  * @param db the name of the database.
  * @param collection the name of the collection to drop.
+ * @param out a BSON document containing the result of the command.
  *
  * @return true if the collection drop was successful.
  */
