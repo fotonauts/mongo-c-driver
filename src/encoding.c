@@ -102,7 +102,7 @@ static int isLegalUTF8( const unsigned char *source, int length ) {
 }
 
 /* If the name is part of a db ref ($ref, $db, or $id), then return true. */
-static int bson_string_is_db_ref( const unsigned char *string, const int length ) {
+static int bson_string_is_db_ref( const unsigned char *string, const size_t length ) {
     int result = 0;
 
     if( length >= 4 ) {

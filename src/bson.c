@@ -106,7 +106,7 @@ MONGO_EXPORT int bson_size( const bson *b ) {
     return i;
 }
 
-MONGO_EXPORT int bson_buffer_size( const bson *b ) {
+MONGO_EXPORT size_t bson_buffer_size( const bson *b ) {
     return (b->cur - b->data + 1);
 }
 
@@ -796,7 +796,7 @@ MONGO_EXPORT int bson_append_code_n( bson *b, const char *name, const char *valu
 MONGO_EXPORT int bson_append_code_w_scope_n( bson *b, const char *name,
                                 const char *code, size_t len, const bson *scope ) {
 
-    int sl, size;
+    size_t sl, size;
     if ( !scope ) return BSON_ERROR;
     sl = len + 1;
     if ( 4 + 4 + (long long)sl + (long long)bson_size( scope ) > (long long)INT32_MAX ) {
