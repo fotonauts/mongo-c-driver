@@ -30,14 +30,14 @@ BSON_LIBNAME=libbson
 ENV?=posix
 
 # TODO: add replica set test, cpp test, platform tests, json_test
-TESTS=test_auth test_bson test_bson_subobject test_count_delete \
+TESTS=test_auth test_bcon test_bson test_bson_subobject test_count_delete \
   test_cursors test_endian_swap test_errors test_examples \
   test_functions test_gridfs test_helpers \
   test_oid test_resize test_simple test_sizes test_update \
   test_validate test_write_concern test_commands
-MONGO_OBJECTS=src/bson.o src/encoding.o src/gridfs.o src/md5.o src/mongo.o \
+MONGO_OBJECTS=src/bcon.o src/bson.o src/encoding.o src/gridfs.o src/md5.o src/mongo.o \
  src/numbers.o
-BSON_OBJECTS=src/bson.o src/numbers.o src/encoding.o
+BSON_OBJECTS=src/bcon.o src/bson.o src/numbers.o src/encoding.o
 
 ifeq ($(ENV),posix)
     TESTS+=test_env_posix test_unix_socket
@@ -117,11 +117,11 @@ ifeq ($(kernel_name),Darwin)
     DYLIBSUFFIX=dylib
     MONGO_DYLIB_MINOR_NAME=$(MONGO_LIBNAME).$(DYLIBSUFFIX).$(MONGO_MAJOR).$(MONGO_MINOR)
     MONGO_DYLIB_MAJOR_NAME=$(MONGO_LIBNAME).$(DYLIBSUFFIX).$(MONGO_MAJOR)
-    MONGO_DYLIB_MAKE_CMD=$(CC) -shared -Wl,-install_name,$(MONGO_DYLIB_MINOR_NAME) -o $(MONGO_DYLIBNAME)
+    MONGO_DYLIB_MAKE_CMD=$(CC) -shared -Wl,-install_name,$(MONGO_DYLIB_MINOR_NAME) -o $(MONGO_DYLIBNAME) $(ALL_LDFLAGS) $(DYN_MONGO_OBJECTS)
 
     BSON_DYLIB_MINOR_NAME=$(BSON_LIBNAME).$(DYLIBSUFFIX).$(BSON_MAJOR).$(BSON_MINOR)
     BSON_DYLIB_MAJOR_NAME=$(BSON_LIBNAME).$(DYLIBSUFFIX).$(BSON_MAJOR)
-    BSON_DYLIB_MAKE_CMD=$(CC) -shared -Wl,-install_name,$(BSON_DYLIB_MINOR_NAME) -o $(BSON_DYLIBNAME)
+    BSON_DYLIB_MAKE_CMD=$(CC) -shared -Wl,-install_name,$(BSON_DYLIB_MINOR_NAME) -o $(BSON_DYLIBNAME) $(ALL_LDFLAGS) $(DYN_BSON_OBJECTS)
 endif
 
 # Installation
@@ -136,6 +136,7 @@ INSTALL_LIBRARY_PATH?=/usr/local/lib
 all: $(MONGO_DYLIBNAME) $(BSON_DYLIBNAME) $(MONGO_STLIBNAME) $(BSON_STLIBNAME)
 
 # Dependency targets. Run 'make deps' to generate these.
+bcon.o: src/bcon.c src/bcon.h src/bson.h
 bson.o: src/bson.c src/bson.h src/encoding.h
 encoding.o: src/encoding.c src/bson.h src/encoding.h
 env_standard.o: src/env_standard.c src/env.h src/mongo.h src/bson.h
@@ -169,6 +170,9 @@ install:
 	$(INSTALL) $(MONGO_STLIBNAME) $(INSTALL_LIBRARY_PATH)
 	$(INSTALL) $(BSON_STLIBNAME) $(INSTALL_LIBRARY_PATH)
 
+scan-build: clean
+	scan-build -V -v make
+
 test: $(TESTS)
 	sh runtests.sh
 
@@ -179,7 +183,10 @@ docs:
 	python docs/buildscripts/docs.py
 
 clean:
-	rm -rf $(MONGO_DYLIBNAME) $(MONGO_STLIBNAME) $(BSON_DYLIBNAME) $(BSON_STLIBNAME) src/*.o src/*.os test_*
+	rm -rf src/*.o src/*.os test/*.o test/*.os test_* .scon* config.log
+
+clobber: clean
+	rm -rf $(MONGO_DYLIBNAME) $(MONGO_STLIBNAME) $(BSON_DYLIBNAME) $(BSON_STLIBNAME) docs/html docs/source/doxygen
 
 deps:
 	$(CC) -MM -DMONGO_HAVE_STDINT src/*.c
@@ -196,4 +203,4 @@ test_%: test/%_test.c test/test.h $(MONGO_STLIBNAME)
 %.os: %.c
 	$(CC) -o $@ -c $(ALL_CFLAGS) $(DYN_FLAGS) $<
 
-.PHONY: clean docs test
+.PHONY: 32bit all clean clobber deps docs install test valgrind

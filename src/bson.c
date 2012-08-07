@@ -71,7 +71,7 @@ MONGO_EXPORT bson *bson_empty( bson *obj ) {
 }
 
 MONGO_EXPORT int bson_copy( bson *out, const bson *in ) {
-    if ( !out ) return BSON_ERROR;
+    if ( !out || !in ) return BSON_ERROR;
     if ( !in->finished ) return BSON_ERROR;
     bson_init_size( out, bson_size( in ) );
     memcpy( out->data, in->data, bson_size( in ) );
@@ -242,11 +242,11 @@ MONGO_EXPORT void bson_print_raw( const char *data , int depth ) {
             break;
         case BSON_CODEWSCOPE:
             bson_printf( "BSON_CODE_W_SCOPE: %s", bson_iterator_code( &i ) );
-            /* bson_init( &scope ); // review - stepped on by bson_iterator_code_scope? */
+            /* bson_init( &scope ); */ /* review - stepped on by bson_iterator_code_scope? */
             bson_iterator_code_scope( &i, &scope );
             bson_printf( "\n\t SCOPE: " );
             bson_print( &scope );
-            /* bson_destroy( &scope ); // review - causes free error */
+            /* bson_destroy( &scope ); */ /* review - causes free error */
             break;
         case BSON_INT:
             bson_printf( "%d" , bson_iterator_int( &i ) );
@@ -796,12 +796,14 @@ MONGO_EXPORT int bson_append_code_n( bson *b, const char *name, const char *valu
 MONGO_EXPORT int bson_append_code_w_scope_n( bson *b, const char *name,
                                 const char *code, size_t len, const bson *scope ) {
 
-    int sl = ( int )( len + 1 );
-    size_t size = 4 + 4 + sl + bson_size( scope );
-    if ( len >= INT32_MAX ) {
+    int sl, size;
+    if ( !scope ) return BSON_ERROR;
+    sl = len + 1;
+    if ( 4 + 4 + (long long)sl + (long long)bson_size( scope ) > (long long)INT32_MAX ) {
         b->err = BSON_SIZE_OVERFLOW;
         return BSON_ERROR;
     }
+    size = 4 + 4 + sl + bson_size( scope );
     if ( bson_append_estart( b, BSON_CODEWSCOPE, name, size ) == BSON_ERROR )
         return BSON_ERROR;
     bson_append_int32( b, ( int )size );
@@ -860,6 +862,7 @@ MONGO_EXPORT int bson_append_regex( bson *b, const char *name, const char *patte
 }
 
 MONGO_EXPORT int bson_append_bson( bson *b, const char *name, const bson *bson ) {
+    if ( !bson ) return BSON_ERROR;
     if ( bson_append_estart( b, BSON_OBJECT, name, bson_size( bson ) ) == BSON_ERROR )
         return BSON_ERROR;
     bson_append( b , bson->data , bson_size( bson ) );
