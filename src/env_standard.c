@@ -19,8 +19,6 @@
 #include "env.h"
 #include <errno.h>
 #include <string.h>
-#include <errno.h>
-#include <signal.h>
 
 #ifdef _WIN32
     #ifdef _MSC_VER
@@ -45,9 +43,6 @@
 #ifndef NI_MAXSERV
 # define NI_MAXSERV 32
 #endif
-#ifndef MSG_NOSIGNAL
-# define MSG_NOSIGNAL 0
-#endif
 
 int mongo_env_close_socket( int socket ) {
 #ifdef _WIN32
@@ -57,7 +52,7 @@ int mongo_env_close_socket( int socket ) {
 #endif
 }
 
-int mongo_env_write_socket( mongo *conn, const void *buf, size_t len ) {
+int mongo_env_write_socket( mongo *conn, const void *buf, int len ) {
     const char *cbuf = buf;
 #ifdef _WIN32
     int flags = 0;
@@ -70,7 +65,7 @@ int mongo_env_write_socket( mongo *conn, const void *buf, size_t len ) {
 #endif
 
     while ( len ) {
-        size_t sent = send( conn->sock, cbuf, len, flags );
+        int sent = send( conn->sock, cbuf, len, flags );
         if ( sent == -1 ) {
             if (errno == EPIPE) 
                 conn->connected = 0;
@@ -84,10 +79,10 @@ int mongo_env_write_socket( mongo *conn, const void *buf, size_t len ) {
     return MONGO_OK;
 }
 
-int mongo_env_read_socket( mongo *conn, void *buf, size_t len ) {
+int mongo_env_read_socket( mongo *conn, void *buf, int len ) {
     char *cbuf = buf;
     while ( len ) {
-        size_t sent = recv( conn->sock, cbuf, len, 0 );
+        int sent = recv( conn->sock, cbuf, len, 0 );
         if ( sent == 0 || sent == -1 ) {
             conn->err = MONGO_IO_ERROR;
             return MONGO_ERROR;
@@ -115,11 +110,11 @@ int mongo_env_socket_connect( mongo *conn, const char *host, int port ) {
         return MONGO_ERROR;
     }
 
-    freeaddrinfo( ans );
-    if ( ans_cursor ) {
-        setsockopt( conn->sock, IPPROTO_TCP, TCP_NODELAY, ( char * ) &flag, sizeof( flag ) );
-        if ( conn->op_timeout_ms > 0 )
-            mongo_set_socket_op_timeout( conn, conn->op_timeout_ms );
+    memset( sa.sin_zero , 0 , sizeof( sa.sin_zero ) );
+    sa.sin_family = AF_INET;
+    sa.sin_port = htons( port );
+    sa.sin_addr.s_addr = inet_addr( host );
+    addressSize = sizeof( sa );
 
     if ( connect( conn->sock, ( struct sockaddr * )&sa, addressSize ) == -1 ) {
         mongo_env_close_socket( conn->sock );
