@@ -613,8 +613,8 @@ static void bson_append32( bson *b, const void *data ) {
     b->cur += 4;
 }
 
-static void bson_append_int32( bson *b, int integer ) {
-    bson_little_endian32( b->cur, &integer );
+static void bson_append32_as_int( bson *b, int data ) {
+    bson_little_endian32( b->cur, &data );
     b->cur += 4;
 }
 
@@ -760,12 +760,13 @@ static int bson_append_string_base( bson *b, const char *name,
         // string too long
         return BSON_ERROR;
     }
+
     if ( bson_check_string( b, ( const char * )value, sl - 1 ) == BSON_ERROR )
         return BSON_ERROR;
     if ( bson_append_estart( b, type, name, 4 + sl ) == BSON_ERROR ) {
         return BSON_ERROR;
     }
-    bson_append_int32( b , ( int )sl );
+    bson_append32_as_int( b , ( int )sl );
     bson_append( b , value , sl - 1 );
     bson_append( b , "\0" , 1 );
     return BSON_OK;
@@ -808,7 +809,7 @@ MONGO_EXPORT int bson_append_code_w_scope_n( bson *b, const char *name,
     size = 4 + 4 + sl + bson_size( scope );
     if ( bson_append_estart( b, BSON_CODEWSCOPE, name, size ) == BSON_ERROR )
         return BSON_ERROR;
-    bson_append_int32( b, ( int )size );
+    bson_append32_as_int( b, ( int )size );
     bson_append32( b, &sl );
     bson_append( b, code, sl );
     bson_append( b, scope->data, bson_size( scope ) );
@@ -824,14 +825,14 @@ MONGO_EXPORT int bson_append_binary( bson *b, const char *name, char type, const
         size_t subtwolen = len + 4;
         if ( bson_append_estart( b, BSON_BINDATA, name, 4+1+4+len ) == BSON_ERROR )
             return BSON_ERROR;
-        bson_append_int32( b, ( int )subtwolen );
+        bson_append32_as_int( b, ( int )subtwolen );
         bson_append_byte( b, type );
-        bson_append_int32( b, ( int )len );
+        bson_append32_as_int( b, ( int )len );
         bson_append( b, str, len );
     } else {
         if ( bson_append_estart( b, BSON_BINDATA, name, 4+1+len ) == BSON_ERROR )
             return BSON_ERROR;
-        bson_append_int32( b, ( int )len );
+        bson_append32_as_int( b, ( int )len );
         bson_append_byte( b, type );
         bson_append( b, str, len );
     }
