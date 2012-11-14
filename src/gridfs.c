@@ -97,7 +97,6 @@ int gridfs_init( mongo *client, const char *dbname, const char *prefix,
     bson_append_int( &b, "filename", 1 );
     bson_finish( &b );
     options = 0;
-//    MONGO_EXPORmongo_create_index( mongo *conn, const char *ns, const bson *key, int options, bson *out ) {
     success = ( mongo_create_index( gfs->client, gfs->files_ns, NULL, &b, options, NULL ) == MONGO_OK );
     bson_destroy( &b );
     if ( !success ) {
