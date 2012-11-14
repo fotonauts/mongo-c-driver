@@ -1316,7 +1316,7 @@ MONGO_EXPORT mongo_cursor *mongo_find( mongo *conn, const char *ns, const bson *
     }
 }
 
-MONGO_EXPORT bson_bool_t mongo_find_one( mongo *conn, const char *ns, const bson *query,
+MONGO_EXPORT int mongo_find_one( mongo *conn, const char *ns, const bson *query,
                     const bson *fields, bson *out ) {
 
     mongo_cursor cursor[1];
@@ -1721,7 +1721,7 @@ MONGO_EXPORT double mongo_count( mongo *conn, const char *db, const char *coll, 
     }
 }
 
-MONGO_EXPORT bson_bool_t mongo_run_command( mongo *conn, const char *db, const bson *command,
+MONGO_EXPORT int mongo_run_command( mongo *conn, const char *db, const bson *command,
                        bson *out ) {
     int ret = MONGO_OK;
     bson response = {NULL, 0};
@@ -1845,7 +1845,7 @@ MONGO_EXPORT int mongo_cmd_create_capped_collection( mongo *conn, const char *db
     return result;
 }
 
-MONGO_EXPORT bson_bool_t mongo_cmd_rename_collection( mongo *conn, const char *db, const char *oldcollection, const char *newcollection )
+MONGO_EXPORT int mongo_cmd_rename_collection( mongo *conn, const char *db, const char *oldcollection, const char *newcollection )
 {
     
     bson out = {NULL, 0};
@@ -1907,11 +1907,11 @@ static int mongo_cmd_get_error_helper( mongo *conn, const char *db,
         return MONGO_OK;
 }
 
-MONGO_EXPORT bson_bool_t mongo_cmd_get_prev_error( mongo *conn, const char *db, bson *out ) {
+MONGO_EXPORT int mongo_cmd_get_prev_error( mongo *conn, const char *db, bson *out ) {
     return mongo_cmd_get_error_helper( conn, db, out, "getpreverror" );
 }
 
-MONGO_EXPORT bson_bool_t mongo_cmd_get_last_error( mongo *conn, const char *db, bson *out ) {
+MONGO_EXPORT int mongo_cmd_get_last_error( mongo *conn, const char *db, bson *out ) {
     return mongo_cmd_get_error_helper( conn, db, out, "getlasterror" );
 }
 

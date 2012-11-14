@@ -776,7 +776,7 @@ MONGO_EXPORT int mongo_cmd_drop_db( mongo *conn, const char *db );
  *
  * @return true if the collection drop was successful.
  */
-bson_bool_t mongo_cmd_create_collection( mongo *conn, const char *db, const char *collection );
+int mongo_cmd_create_collection( mongo *conn, const char *db, const char *collection );
 
 /**
  * Create a capped collection.
@@ -788,7 +788,7 @@ bson_bool_t mongo_cmd_create_collection( mongo *conn, const char *db, const char
  *
  * @return true if the collection drop was successful.
  */
-bson_bool_t mongo_cmd_create_capped_collection( mongo *conn, const char *db, const char *collection, int64_t capsize );
+int mongo_cmd_create_capped_collection( mongo *conn, const char *db, const char *collection, int64_t capsize );
 
 /**
  * Rename a collection.
@@ -800,7 +800,7 @@ bson_bool_t mongo_cmd_create_capped_collection( mongo *conn, const char *db, con
  *
  * @return true if the collection drop was successful.
  */
-bson_bool_t mongo_cmd_rename_collection( mongo *conn, const char *db, const char *oldcollection, const char *newcollection );
+int mongo_cmd_rename_collection( mongo *conn, const char *db, const char *oldcollection, const char *newcollection );
 
 /**
  * Drop a collection.
@@ -862,7 +862,7 @@ MONGO_EXPORT bson_bool_t mongo_cmd_ismaster( mongo *conn, bson *out );
  * @return MONGO_OK if no error and MONGO_ERROR on error. On error, check the values
  *     of conn->lasterrcode and conn->lasterrstr for the error status.
  */
-MONGO_EXPORT bson_bool_t mongo_cmd_get_last_error( mongo *conn, const char *db, bson *out );
+MONGO_EXPORT int mongo_cmd_get_last_error( mongo *conn, const char *db, bson *out );
 
 /**
  * Get the most recent error with the current connection.
@@ -874,7 +874,7 @@ MONGO_EXPORT bson_bool_t mongo_cmd_get_last_error( mongo *conn, const char *db, 
  * @return MONGO_OK if no error and MONGO_ERROR on error. On error, check the values
  *     of conn->lasterrcode and conn->lasterrstr for the error status.
  */
-MONGO_EXPORT bson_bool_t mongo_cmd_get_prev_error( mongo *conn, const char *db, bson *out );
+MONGO_EXPORT int mongo_cmd_get_prev_error( mongo *conn, const char *db, bson *out );
 
 /**
  * Reset the error state for the connection.
