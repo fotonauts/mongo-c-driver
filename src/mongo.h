@@ -198,8 +198,6 @@ typedef struct {
 Connection API
 **********************************************************************/
 
-MONGO_EXPORT mongo* mongo_create( void );
-
 /** Initialize sockets for Windows.
  */
 MONGO_EXPORT void mongo_init_sockets( void );
