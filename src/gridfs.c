@@ -605,14 +605,9 @@ MONGO_EXPORT mongo_cursor *gridfile_get_chunks( gridfile *gfile, size_t start, s
     bson_init( &query );
     bson_append_oid( &query, "files_id", &id );
     if ( size == 1 ) {
-<<<<<<< HEAD
         bson_append_int( &query, "n", (int)start );
-    } else {
-=======
-        bson_append_int( &query, "n", start );
     }
     else {
->>>>>>> master-mongo-c-driver-master
         bson_init( &gte );
         bson_append_int( &gte, "$gte", (int)start );
         bson_finish( &gte );

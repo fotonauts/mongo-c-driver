@@ -225,7 +225,7 @@ int mongo_env_sock_init( void ) {
     return 0;
 }
 
-int mongo_env_write_socket( mongo *conn, const void *buf, int len ) {
+int mongo_env_write_socket( mongo *conn, const void *buf, size_t len ) {
     const char *cbuf = buf;
 #ifdef __APPLE__
     int flags = 0;
@@ -248,7 +248,7 @@ int mongo_env_write_socket( mongo *conn, const void *buf, int len ) {
     return MONGO_OK;
 }
 
-int mongo_env_read_socket( mongo *conn, void *buf, int len ) {
+int mongo_env_read_socket( mongo *conn, void *buf, size_t len ) {
     char *cbuf = buf;
     while ( len ) {
         int sent = recv( conn->sock, cbuf, len, 0 );

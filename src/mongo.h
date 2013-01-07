@@ -666,7 +666,7 @@ MONGO_EXPORT double mongo_count( mongo *conn, const char *db, const char *coll,
  *
  * @return MONGO_OK if index is created successfully; otherwise, MONGO_ERROR.
  */
-MONGO_EXPORT int mongo_create_index( mongo *conn, const char *ns,
+MONGO_EXPORT int mongo_create_index( mongo *conn, const char *ns, const char *name,
                                      const bson *key, int options, bson *out );
 
 /**
