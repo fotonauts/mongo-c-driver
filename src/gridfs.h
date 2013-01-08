@@ -293,7 +293,7 @@ MONGO_EXPORT void gridfile_get_chunk( gridfile *gfile, int n, bson* out );
  *
  *  @return - mongo_cursor of the chunks (must be destroyed after use)
  */
-MONGO_EXPORT mongo_cursor *gridfile_get_chunks( gridfile *gfile,  size_t start, size_t size );
+MONGO_EXPORT mongo_cursor *gridfile_get_chunks( gridfile *gfile, size_t start, size_t size );
 
 /**
  *  Writes the GridFile to a stream
