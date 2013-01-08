@@ -658,6 +658,7 @@ MONGO_EXPORT double mongo_count( mongo *conn, const char *db, const char *coll,
  *
  * @param conn a mongo object.
  * @param ns the namespace.
+ * @param name the name of the index (if NULL a default will be generated)
  * @param data the bson index data.
  * @param options a bitfield for setting index options. Possibilities include
  *   MONGO_INDEX_UNIQUE, MONGO_INDEX_DROP_DUPS, MONGO_INDEX_BACKGROUND,
