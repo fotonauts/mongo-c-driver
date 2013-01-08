@@ -292,7 +292,7 @@ static mongo_message *mongo_message_create( size_t len , int id , int responseTo
     mm = ( mongo_message * )bson_malloc( len );
     if ( !id )
         id = rand();
-    
+
     /* native endian (converted on send) */
     mm->head.len = ( int )len;
     mm->head.id = id;
