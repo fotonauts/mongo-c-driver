@@ -754,6 +754,7 @@ MONGO_EXPORT int bson_append_undefined( bson *b, const char *name ) {
 
 static int bson_append_string_base( bson *b, const char *name,
                                     const char *value, size_t len, bson_type type ) {
+
     size_t sl = len + 1;
     if ( sl > INT32_MAX ) {
         b->err = BSON_SIZE_OVERFLOW;
