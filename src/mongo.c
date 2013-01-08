@@ -284,12 +284,12 @@ static const char *create_database_name_with_ns( const char *ns, const char **co
 }
 
 static mongo_message *mongo_message_create( size_t len , int id , int responseTo , int op ) {
-    mongo_message *mm = ( mongo_message * )bson_malloc( len );
-    
+    mongo_message *mm;
+
     if( len >= INT32_MAX) {
-        bson_free( mm );
         return NULL;
     }
+    mm = ( mongo_message * )bson_malloc( len );
     if ( !id )
         id = rand();
     
@@ -876,7 +876,8 @@ static int mongo_choose_write_concern( mongo *conn,
         *write_concern = conn->write_concern;
     }
     if ( *write_concern && (*write_concern)->w < 1 ) {
-        *write_concern = 0; /* do not generate getLastError request */
+        *write_concern
+         = 0; /* do not generate getLastError request */
     }
     if( *write_concern && !((*write_concern)->cmd) ) {
         __mongo_set_error( conn, MONGO_WRITE_CONCERN_INVALID,
@@ -916,7 +917,7 @@ MONGO_EXPORT int mongo_insert( mongo *conn, const char *ns,
                                + strlen( ns )
                                + 1 + bson_size( bson )
                                , 0, 0, MONGO_OP_INSERT );
-    if( mm == NULL) {
+    if( mm == NULL ) {
         conn->err = MONGO_BSON_TOO_LARGE;
         return MONGO_ERROR;
     }
@@ -972,7 +973,7 @@ MONGO_EXPORT int mongo_insert_batch( mongo *conn, const char *ns,
     }
 
     mm = mongo_message_create( size , 0 , 0 , MONGO_OP_INSERT );
-    if( mm == NULL) {
+    if( mm == NULL ) {
         conn->err = MONGO_BSON_TOO_LARGE;
         return MONGO_ERROR;
     }
@@ -1028,7 +1029,7 @@ MONGO_EXPORT int mongo_update( mongo *conn, const char *ns, const bson *cond,
                                + bson_size( cond )
                                + bson_size( op )
                                , 0 , 0 , MONGO_OP_UPDATE );
-    if( mm == NULL) {
+    if( mm == NULL ) {
         conn->err = MONGO_BSON_TOO_LARGE;
         return MONGO_ERROR;
     }
@@ -1079,7 +1080,7 @@ MONGO_EXPORT int mongo_remove( mongo *conn, const char *ns, const bson *cond,
                                + 4  /* ZERO */
                                + bson_size( cond )
                                , 0 , 0 , MONGO_OP_DELETE );
-    if( mm == NULL) {
+    if( mm == NULL ) {
         conn->err = MONGO_BSON_TOO_LARGE;
         return MONGO_ERROR;
     }
@@ -1284,7 +1285,7 @@ static int mongo_cursor_get_more( mongo_cursor *cursor ) {
         if( mm == NULL ) {
             return MONGO_ERROR;
         }
-        
+
         data = &mm->data;
         data = mongo_data_append32( data, &ZERO );
         data = mongo_data_append( data, cursor->ns, sl );
@@ -1464,9 +1465,9 @@ MONGO_EXPORT int mongo_cursor_destroy( mongo_cursor *cursor ) {
                             +8 /*cursorID*/
                             , 0, 0, MONGO_OP_KILL_CURSORS );
         if( mm == NULL ) {
+            conn->err = MONGO_BSON_TOO_LARGE;
             return MONGO_ERROR;
         }
-        
         char *data = &mm->data;
         data = mongo_data_append32( data, &ZERO );
         data = mongo_data_append32( data, &ONE );
