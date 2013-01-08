@@ -760,7 +760,6 @@ static int bson_append_string_base( bson *b, const char *name,
         // string too long
         return BSON_ERROR;
     }
-
     if ( bson_check_string( b, ( const char * )value, sl - 1 ) == BSON_ERROR )
         return BSON_ERROR;
     if ( bson_append_estart( b, type, name, 4 + sl ) == BSON_ERROR ) {
@@ -788,11 +787,11 @@ MONGO_EXPORT int bson_append_string_n( bson *b, const char *name, const char *va
     return bson_append_string_base( b, name, value, len, BSON_STRING );
 }
 
-MONGO_EXPORT int bson_append_symbol_n( bson *b, const char *name, const char *value, int len ) {
+MONGO_EXPORT int bson_append_symbol_n( bson *b, const char *name, const char *value, size_t len ) {
     return bson_append_string_base( b, name, value, len, BSON_SYMBOL );
 }
 
-MONGO_EXPORT int bson_append_code_n( bson *b, const char *name, const char *value, int len ) {
+MONGO_EXPORT int bson_append_code_n( bson *b, const char *name, const char *value, size_t len ) {
     return bson_append_string_base( b, name, value, len, BSON_CODE );
 }
 

@@ -740,7 +740,7 @@ MONGO_EXPORT int bson_append_symbol( bson *b, const char *name, const char *str 
  *
  * @return BSON_OK or BSON_ERROR.
  */
-MONGO_EXPORT int bson_append_symbol_n( bson *b, const char *name, const char *str, int len );
+MONGO_EXPORT int bson_append_symbol_n( bson *b, const char *name, const char *str, size_t len );
 
 /**
  * Append code to a bson.
@@ -764,7 +764,7 @@ MONGO_EXPORT int bson_append_code( bson *b, const char *name, const char *str );
  *
  * @return BSON_OK or BSON_ERROR.
  */
-MONGO_EXPORT int bson_append_code_n( bson *b, const char *name, const char *str, int len );
+MONGO_EXPORT int bson_append_code_n( bson *b, const char *name, const char *str, size_t len );
 
 /**
  * Append code to a bson with scope.

@@ -294,7 +294,7 @@ static mongo_message *mongo_message_create( size_t len , int id , int responseTo
         id = rand();
     
     /* native endian (converted on send) */
-    mm->head.len = ( int ) len;
+    mm->head.len = ( int )len;
     mm->head.id = id;
     mm->head.responseTo = responseTo;
     mm->head.op = op;
@@ -1971,9 +1971,9 @@ static int mongo_pass_digest( mongo *conn, const char *user, const char *pass, c
         return MONGO_ERROR;
     }
     mongo_md5_init( &st );
-    mongo_md5_append( &st, ( const mongo_md5_byte_t * )user, (int)strlen( user ) );
+    mongo_md5_append( &st, ( const mongo_md5_byte_t * )user, ( int )strlen( user ) );
     mongo_md5_append( &st, ( const mongo_md5_byte_t * )":mongo:", 7 );
-    mongo_md5_append( &st, ( const mongo_md5_byte_t * )pass, (int)strlen( pass ) );
+    mongo_md5_append( &st, ( const mongo_md5_byte_t * )pass, ( int )strlen( pass ) );
     mongo_md5_finish( &st, digest );
     digest2hex( digest, hex_digest );
     return MONGO_OK;
@@ -2042,8 +2042,8 @@ MONGO_EXPORT bson_bool_t mongo_cmd_authenticate( mongo *conn, const char *db, co
         return MONGO_ERROR;
     }
     mongo_md5_init( &st );
-    mongo_md5_append( &st, ( const mongo_md5_byte_t * )nonce, (int)strlen( nonce ) );
-    mongo_md5_append( &st, ( const mongo_md5_byte_t * )user, (int)strlen( user ) );
+    mongo_md5_append( &st, ( const mongo_md5_byte_t * )nonce, ( int )strlen( nonce ) );
+    mongo_md5_append( &st, ( const mongo_md5_byte_t * )user, ( int )strlen( user ) );
     mongo_md5_append( &st, ( const mongo_md5_byte_t * )hex_digest, 32 );
     mongo_md5_finish( &st, digest );
     digest2hex( digest, hex_digest );
