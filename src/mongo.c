@@ -876,8 +876,7 @@ static int mongo_choose_write_concern( mongo *conn,
         *write_concern = conn->write_concern;
     }
     if ( *write_concern && (*write_concern)->w < 1 ) {
-        *write_concern
-         = 0; /* do not generate getLastError request */
+        *write_concern = 0; /* do not generate getLastError request */
     }
     if( *write_concern && !((*write_concern)->cmd) ) {
         __mongo_set_error( conn, MONGO_WRITE_CONCERN_INVALID,
