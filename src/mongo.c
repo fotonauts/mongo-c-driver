@@ -1787,6 +1787,10 @@ MONGO_EXPORT int mongo_run_command( mongo *conn, const char *db, const bson *com
             conn->err = MONGO_COMMAND_FAILED;
             bson_destroy( &response );
             ret = MONGO_ERROR;
+            if( out ) {
+                out->data = NULL;
+                out->cur = NULL;
+            }
         }
         else {
             if( out )
