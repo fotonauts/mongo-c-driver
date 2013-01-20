@@ -1746,7 +1746,6 @@ MONGO_EXPORT double mongo_count( mongo *conn, const char *db, const char *coll, 
     else {
         bson_destroy( &out );
         bson_destroy( &cmd );
-        bson_destroy( &out );
         return MONGO_ERROR;
     }
 }
