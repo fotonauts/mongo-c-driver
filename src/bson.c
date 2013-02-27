@@ -33,6 +33,9 @@ const int initialBufferSize = 128;
 /* only need one of these */
 static const int zero = 0;
 
+/* Static data to use with bson_empty( ) */
+static char *bson_shared_empty_data = "\005\0\0\0\0";
+
 /* Custom standard function pointers. */
 void *( *bson_malloc_func )( size_t ) = malloc;
 void *( *bson_realloc_func )( void *, size_t ) = realloc;
@@ -70,8 +73,7 @@ MONGO_EXPORT void bson_dispose(bson* b) {
 }
 
 MONGO_EXPORT bson *bson_empty( bson *obj ) {
-    static char *data = "\005\0\0\0\0";
-    bson_init_data( obj, data );
+    bson_init_data( obj, bson_shared_empty_data );
     obj->finished = 1;
     obj->err = 0;
     obj->errstr = NULL;
@@ -669,6 +671,7 @@ MONGO_EXPORT int bson_finish( bson *b ) {
         return BSON_ERROR;
 
     if ( ! b->finished ) {
+        bson_fatal_msg(!b->stackPos, "Subobject not finished before bson_finish().");
         if ( bson_ensure_space( b, 1 ) == BSON_ERROR ) return BSON_ERROR;
         bson_append_byte( b, 0 );
         if ( b->cur - b->data >= INT32_MAX ) {
@@ -685,7 +688,10 @@ MONGO_EXPORT int bson_finish( bson *b ) {
 
 MONGO_EXPORT void bson_destroy( bson *b ) {
     if ( b ) {
-        if ( b->data != NULL ) {
+        if ( b->data == bson_shared_empty_data ) {
+            /* Don't deallocate shared static data */
+            b->data = NULL;
+        } else if ( b->data != NULL ) {
             bson_free( b->data );
             b->data = NULL;
         }
