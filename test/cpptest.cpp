@@ -10,7 +10,7 @@ using namespace std;
 
 int main(){
     mongo conn[1];
-    bson b = NULL_BSON;
+    bson b;
 
     INIT_SOCKETS_FOR_WINDOWS;
 

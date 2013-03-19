@@ -8,7 +8,7 @@
 const char *bigstring = "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX";
 
 int main() {
-    bson b = NULL_BSON;
+    bson b;
 
     bson_init( &b );
     bson_append_string( &b, "a", bigstring );

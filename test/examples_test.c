@@ -5,7 +5,7 @@
 #include <stdlib.h>
 
 int main() {
-    bson b = NULL_BSON, sub = NULL_BSON;
+    bson b, sub;
     bson_iterator it;
 
     /* Create a rich document like this one:

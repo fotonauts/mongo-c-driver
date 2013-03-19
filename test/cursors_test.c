@@ -8,7 +8,7 @@
 #include <time.h>
 
 void create_capped_collection( mongo *conn ) {
-    bson b = NULL_BSON;
+    bson b;
 
     bson_init( &b );
     bson_append_string( &b, "create", "cursors" );
@@ -22,7 +22,7 @@ void create_capped_collection( mongo *conn ) {
 }
 
 void insert_sample_data( mongo *conn, int n ) {
-    bson b = NULL_BSON;
+    bson b;
     int i;
 
     for( i=0; i<n; i++ ) {
@@ -42,7 +42,7 @@ void remove_sample_data( mongo *conn ) {
 
 int test_multiple_getmore( mongo *conn ) {
     mongo_cursor *cursor;
-    bson b = NULL_BSON;
+    bson b;
     int count;
 
     remove_sample_data( conn );
@@ -67,7 +67,7 @@ int test_multiple_getmore( mongo *conn ) {
 
 int test_tailable( mongo *conn ) {
     mongo_cursor *cursor;
-    bson b = NULL_BSON, e = NULL_BSON;
+    bson b, e;
     int count;
 
     remove_sample_data( conn );
@@ -141,7 +141,7 @@ int test_builder_api( mongo *conn ) {
 
 int test_bad_query( mongo *conn ) {
     mongo_cursor cursor[1];
-    bson b[1] = { NULL_BSON };
+    bson b[1];
 
     bson_init( b );
     bson_append_start_object( b, "foo" );
@@ -164,7 +164,7 @@ int test_bad_query( mongo *conn ) {
 
 int test_copy_cursor_data( mongo *conn ) {
     mongo_cursor cursor[1];
-    bson b[1] = { NULL_BSON };
+    bson b[1];
 
     insert_sample_data( conn, 10 );
     mongo_cursor_init( cursor, conn, "test.cursors" );

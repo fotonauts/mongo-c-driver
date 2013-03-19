@@ -38,7 +38,7 @@ void test_bcon_token( void ) {
 
 void test_bson_from_bcon( const bcon *bc, bcon_error_t bc_err, int bv_err ) {
     bcon_error_t ret;
-    bson b[1] = { NULL_BSON };
+    bson b[1];
     if ( verbose ) { putchar('\t'); bcon_print(bc); putchar('\n'); }
     ret = bson_from_bcon( b, bc );
     if (ret != bc_err) {
@@ -211,7 +211,7 @@ void test_oid_generation( void ) {
 }
 
 void test_reference_interpolation_example( void ) {
-    bson b[1] = { NULL_BSON };
+    bson b[1];
     char name[] = "pi";
     double value = 3.14159;
     bcon bc[] = { "name", BRS(name), "value", BRF(&value), BEND };
@@ -224,7 +224,7 @@ void test_reference_interpolation_example( void ) {
 }
 
 void test_pointer_interpolation_example( void ) {
-    bson b[1] = { NULL_BSON };
+    bson b[1];
     char name[] = "pi";
     char new_name[] = "log(0)";
     char **pname = (char**)&name;
@@ -240,7 +240,7 @@ void test_pointer_interpolation_example( void ) {
 }
 
 void test_additional_notes_example( void ) {
-    bson b[1] = { NULL_BSON };
+    bson b[1];
     bcon bc[] = { "spec", BS(":_s:"), BEND };
     bson_from_bcon( b, bc ); /* generates { spec: ":_s:" } */
     test_bson_from_bcon( bc, BCON_OK, BSON_VALID );
@@ -248,7 +248,7 @@ void test_additional_notes_example( void ) {
 
 void test_example_hello_world( void ) {
     bcon_error_t ret;
-    bson b[1] = { NULL_BSON };
+    bson b[1];
 
     /* JSON {"hello": "world"} */
 
@@ -268,7 +268,7 @@ void test_example_hello_world( void ) {
 
 void test_example_awesome( void ) {
     bcon_error_t ret;
-    bson b[1] = { NULL_BSON };
+    bson b[1];
 
     /* JSON {"BSON": ["awesome", 5.05, 1986]} */
 
@@ -293,7 +293,7 @@ void test_example_awesome( void ) {
 void test_example_wikipedia_bcon(size_t iterations) {
     bcon_error_t ret;
     size_t i;
-    bson b[1] = { NULL_BSON };
+    bson b[1];
     bcon wikipedia[] = {
         "firstName", "John",
         "lastName" , "Smith",
@@ -328,7 +328,7 @@ void test_example_wikipedia_bcon(size_t iterations) {
 void test_example_wikipedia_bson(size_t iterations) {
     bcon_error_t ret;
     size_t i;
-    bson b[1] = { NULL_BSON };
+    bson b[1];
     for (i = 0; i < iterations; i++) {
         bson_init( b );
         bson_append_string( b, "firstName", "John" );
@@ -357,7 +357,7 @@ void test_example_wikipedia_bson(size_t iterations) {
 }
 
 void test_example_wikipedia( void ) {
-    bson b[1] = { NULL_BSON };
+    bson b[1];
     /*
     http://en.wikipedia.org/wiki/JSON
     {

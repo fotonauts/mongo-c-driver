@@ -6,7 +6,7 @@
 int main() {
     
     mongo conn[1];
-    bson b = NULL_BSON;
+    bson b;
     const char *sock_path = "/tmp/mongodb-27017.sock";
     const char *ns = "test.c.unix_socket";
     const char *col = "c.unix_socket";

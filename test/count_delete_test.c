@@ -8,7 +8,7 @@
 
 int main() {
     mongo conn[1];
-    bson b = NULL_BSON;
+    bson b;
     int i;
 
     const char *db = "test";

@@ -68,7 +68,7 @@ void test_write_concern_finish( void ) {
 void test_batch_insert_with_continue( mongo *conn ) {
     bson *objs[5];
     bson *objs2[5];
-    bson empty = NULL_BSON;
+    bson empty;
     int i;
 
     mongo_cmd_drop_collection( conn, TEST_DB, TEST_COL, NULL );
@@ -127,8 +127,8 @@ void test_batch_insert_with_continue( mongo *conn ) {
 void test_update_and_remove( mongo *conn ) {
     mongo_write_concern wc[1];
     bson *objs[5];
-    bson query[1] = { NULL_BSON }, update[1] = { NULL_BSON };
-    bson empty = NULL_BSON;
+    bson query[1], update[1];
+    bson empty;
     int i;
 
     create_capped_collection( conn );
@@ -191,7 +191,7 @@ void test_update_and_remove( mongo *conn ) {
 
 void test_write_concern_input( mongo *conn ) {
     mongo_write_concern wc[1], wcbad[1];
-    bson b[1] = { NULL_BSON };
+    bson b[1];
 
     mongo_cmd_drop_collection( conn, TEST_DB, TEST_COL, NULL );
 
@@ -236,7 +236,7 @@ void test_write_concern_input( mongo *conn ) {
 
 void test_insert( mongo *conn ) {
     mongo_write_concern wc0[1], wc1[1];
-    bson b[1] = { NULL_BSON }, b2[1] = { NULL_BSON }, b3[1] = { NULL_BSON }, b4[1] = { NULL_BSON }, empty[1] = { NULL_BSON };
+    bson b[1], b2[1], b3[1], b4[1], empty[1];
     bson *objs[2];
 
     mongo_cmd_drop_collection( conn, TEST_DB, TEST_COL, NULL );
