@@ -241,7 +241,7 @@ MONGO_EXPORT int mongo_connect( mongo *conn , const char *host, int port );
 
 /**
  * Set up this connection object for connecting to a replica set.
- * To connect, pass the object to mongo_replica_set_connect().
+ * To connect, pass the object to mongo_replica_set_client().
  *
  * @param conn a mongo object.
  * @param name the name of the replica set to connect to.
@@ -921,6 +921,8 @@ MONGO_EXPORT const char* mongo_get_primary(mongo* conn);
 MONGO_EXPORT int mongo_get_socket(mongo* conn) ;
 MONGO_EXPORT int mongo_get_host_count(mongo* conn);
 MONGO_EXPORT const char* mongo_get_host(mongo* conn, int i);
+MONGO_EXPORT mongo_write_concern* mongo_write_concern_create( void );
+MONGO_EXPORT void mongo_write_concern_dispose(mongo_write_concern* write_concern);
 MONGO_EXPORT mongo_cursor* mongo_cursor_create( void );
 MONGO_EXPORT void mongo_cursor_dispose(mongo_cursor* cursor);
 MONGO_EXPORT int  mongo_get_server_err(mongo* conn);

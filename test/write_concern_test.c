@@ -49,7 +49,7 @@ void bson_dump( bson * b ) {
 /* WC1 is completely static */
 static char WC1_data[] = {23,0,0,0,16,103,101,116,108,97,115,116,101,114,114,111,114,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0};
 static bson WC1_cmd = {
-    WC1_data, WC1_data, 128, 1, {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, 0, 0, ""
+    WC1_data, WC1_data, 128, 1, {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, 0, 0, "", 0, 0
 };
 static mongo_write_concern DWC1 = { 1, 0, 0, 0, 0, 0 }; /* w = 1 */ /* do not reference &WC1_cmd for this test */
 
@@ -75,7 +75,7 @@ void test_batch_insert_with_continue( mongo *conn ) {
     mongo_create_simple_index( conn, TEST_NS, "n", MONGO_INDEX_UNIQUE, NULL );
 
     for( i=0; i<5; i++ ) {
-        objs[i] = bson_create_null();
+        objs[i] = bson_create();
         bson_init( objs[i] );
         bson_append_int( objs[i], "n", i );
         bson_finish( objs[i] );
@@ -88,14 +88,14 @@ void test_batch_insert_with_continue( mongo *conn ) {
           bson_empty( &empty ) ) == 5 );
 
     /* Add one duplicate value for n. */
-    objs2[0] = bson_create_null();
+    objs2[0] = bson_create();
     bson_init( objs2[0] );
     bson_append_int( objs2[0], "n", 1 );
     bson_finish( objs2[0] );
 
     /* Add n for 6 - 9. */
     for( i = 1; i < 5; i++ ) {
-        objs2[i] = bson_create_null();
+        objs2[i] = bson_create();
         bson_init( objs2[i] );
         bson_append_int( objs2[i], "n", i + 5 );
         bson_finish( objs2[i] );
@@ -134,7 +134,7 @@ void test_update_and_remove( mongo *conn ) {
     create_capped_collection( conn );
 
     for( i=0; i<5; i++ ) {
-        objs[i] = bson_create_null();
+        objs[i] = bson_create();
         bson_init( objs[i] );
         bson_append_int( objs[i], "n", i );
         bson_finish( objs[i] );

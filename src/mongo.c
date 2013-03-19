@@ -95,6 +95,15 @@ MONGO_EXPORT const char* mongo_get_host(mongo* conn, int i) {
     return 0;
 }
 
+MONGO_EXPORT mongo_write_concern* mongo_write_concern_create( void ) {
+    return (mongo_write_concern*)bson_malloc(sizeof(mongo_write_concern));
+}
+
+
+MONGO_EXPORT void mongo_write_concern_dispose(mongo_write_concern* write_concern) {
+    bson_free(write_concern);
+}
+
 
 MONGO_EXPORT mongo_cursor* mongo_cursor_create( void ) {
     return (mongo_cursor*)bson_malloc(sizeof(mongo_cursor));
@@ -362,8 +371,10 @@ static int mongo_read_response( mongo *conn, mongo_reply **reply ) {
     unsigned int len;
     int res;
 
-    mongo_env_read_socket( conn, &head, sizeof( head ) );
-    mongo_env_read_socket( conn, &fields, sizeof( fields ) );
+    if ( ( res = mongo_env_read_socket( conn, &head, sizeof( head ) ) ) != MONGO_OK ||
+         ( res = mongo_env_read_socket( conn, &fields, sizeof( fields ) ) ) != MONGO_OK ) {
+        return res;
+    }
 
     bson_little_endian32( &len, &head.len );
 
@@ -453,7 +464,7 @@ MONGO_EXPORT void mongo_init_sockets( void ) {
 /* WC1 is completely static */
 static char WC1_data[] = {23,0,0,0,16,103,101,116,108,97,115,116,101,114,114,111,114,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0};
 static bson WC1_cmd = {
-    WC1_data, WC1_data, 128, 1, {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, 0, 0, ""
+    WC1_data, WC1_data, 128, 1, {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, 0, 0, "", 0, 0
 };
 static mongo_write_concern WC1 = { 1, 0, 0, 0, 0, &WC1_cmd }; /* w = 1 */
 
@@ -1128,7 +1139,7 @@ MONGO_EXPORT int mongo_write_concern_finish( mongo_write_concern *write_concern 
         command = write_concern->cmd;
     }
     else
-        command = bson_create_null();
+        command = bson_create();
 
     if( !command ) {
         return MONGO_ERROR;
@@ -1174,7 +1185,7 @@ MONGO_EXPORT void mongo_write_concern_destroy( mongo_write_concern *write_concer
     if( write_concern->cmd )
         bson_destroy( write_concern->cmd );
 
-    bson_free( write_concern->cmd );
+    bson_dispose( write_concern->cmd );
 }
 
 MONGO_EXPORT void mongo_set_write_concern( mongo *conn,
@@ -1319,7 +1330,7 @@ static int mongo_cursor_get_more( mongo_cursor *cursor ) {
 MONGO_EXPORT mongo_cursor *mongo_find( mongo *conn, const char *ns, const bson *query,
                                        const bson *fields, int limit, int skip, int options ) {
 
-    mongo_cursor *cursor = ( mongo_cursor * )bson_malloc( sizeof( mongo_cursor ) );
+    mongo_cursor *cursor = mongo_cursor_create();
     mongo_cursor_init( cursor, conn, ns );
     cursor->flags |= MONGO_CURSOR_MUST_FREE;
 

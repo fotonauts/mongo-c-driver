@@ -51,6 +51,8 @@ bson_sprintf_func bson_sprintf = sprintf;
 static int _bson_errprintf( const char *, ... );
 bson_printf_func bson_errprintf = _bson_errprintf;
 
+static size_t _bson_position( const bson *b );
+
 /* ObjectId fuzz functions. */
 static int ( *oid_fuzz_func )( void ) = NULL;
 static int ( *oid_inc_func )( void )  = NULL;
@@ -77,6 +79,8 @@ MONGO_EXPORT bson *bson_empty( bson *obj ) {
     obj->finished = 1;
     obj->err = 0;
     obj->errstr = NULL;
+    obj->stackPtr = NULL;
+    obj->stackSize = 0;
     obj->stackPos = 0;
     return obj;
 }
@@ -107,6 +111,8 @@ static void _bson_reset( bson *b ) {
     b->stackPos = 0;
     b->err = 0;
     b->errstr = NULL;
+    b->stackPtr = NULL;
+    b->stackSize = 0;
 }
 
 MONGO_EXPORT int bson_size( const bson *b ) {
@@ -117,8 +123,12 @@ MONGO_EXPORT int bson_size( const bson *b ) {
     return i;
 }
 
+static size_t _bson_position( const bson *b ) {
+    return b->cur - b->data;
+}
+
 MONGO_EXPORT size_t bson_buffer_size( const bson *b ) {
-    return (b->cur - b->data + 1);
+    return _bson_position(b) + 1;
 }
 
 
@@ -602,6 +612,38 @@ static void _bson_init_size( bson *b, int size ) {
     _bson_reset( b );
 }
 
+static int _bson_append_grow_stack( bson * b ) {
+    if ( !b->stackPtr ) {
+        // If this is an empty bson structure, initially use the struct-local (fixed-size) stack
+        b->stackPtr = b->stack;
+        b->stackSize = sizeof( b->stack ) / sizeof( size_t );
+    }
+    else if ( b->stackPtr == b->stack ) {
+        // Once we require additional capacity, set up a dynamically resized stack
+        size_t *new_stack = ( size_t * ) bson_malloc( 2 * sizeof( b->stack ) );
+        if ( new_stack ) {
+            b->stackPtr = new_stack;
+            b->stackSize = 2 * sizeof( b->stack ) / sizeof( size_t );
+            memcpy( b->stackPtr, b->stack, sizeof( b->stack ) );
+        }
+        else {
+            return BSON_ERROR;
+        }
+    }
+    else {
+        // Double the capacity of the dynamically-resized stack
+        size_t *new_stack = ( size_t * ) bson_realloc( b->stackPtr, ( b->stackSize * 2 ) * sizeof( size_t ) );
+        if ( new_stack ) {
+            b->stackPtr = new_stack;
+            b->stackSize *= 2;
+        }
+        else {
+            return BSON_ERROR;
+        }
+    }
+    return BSON_OK;
+}
+
 MONGO_EXPORT void bson_init( bson *b ) {
     _bson_init_size( b, initialBufferSize );
 }
@@ -636,7 +678,7 @@ static void bson_append64( bson *b, const void *data ) {
 }
 
 int bson_ensure_space( bson *b, const size_t bytesNeeded ) {
-    size_t pos = b->cur - b->data;
+    size_t pos = _bson_position(b);
     char *orig = b->data;
     int new_size;
 
@@ -674,11 +716,11 @@ MONGO_EXPORT int bson_finish( bson *b ) {
         bson_fatal_msg(!b->stackPos, "Subobject not finished before bson_finish().");
         if ( bson_ensure_space( b, 1 ) == BSON_ERROR ) return BSON_ERROR;
         bson_append_byte( b, 0 );
-        if ( b->cur - b->data >= INT32_MAX ) {
+        if ( _bson_position(b) >= INT32_MAX ) {
             b->err = BSON_SIZE_OVERFLOW;
             return BSON_ERROR;
         }
-        i = ( int )( b->cur - b->data );
+        i = ( int ) _bson_position(b);
         bson_little_endian32( b->data, &i );
         b->finished = 1;
     }
@@ -695,6 +737,12 @@ MONGO_EXPORT void bson_destroy( bson *b ) {
             bson_free( b->data );
             b->data = NULL;
         }
+        if ( b->stackPtr && b->stackPtr != b->stack ) {
+            bson_free( b->stackPtr );
+            b->stackPtr = NULL;
+        }
+        b->stackSize = 0;
+        b->stackPos = 0;
         b->err = 0;
         b->cur = 0;
         b->finished = 1;
@@ -938,14 +986,16 @@ MONGO_EXPORT int bson_append_time_t( bson *b, const char *name, time_t secs ) {
 
 MONGO_EXPORT int bson_append_start_object( bson *b, const char *name ) {
     if ( bson_append_estart( b, BSON_OBJECT, name, 5 ) == BSON_ERROR ) return BSON_ERROR;
-    b->stack[ b->stackPos++ ] = b->cur - b->data;
+    if ( b->stackPos >= b->stackSize && _bson_append_grow_stack( b ) == BSON_ERROR ) return BSON_ERROR;
+    b->stackPtr[ b->stackPos++ ] = _bson_position(b);
     bson_append32( b , &zero );
     return BSON_OK;
 }
 
 MONGO_EXPORT int bson_append_start_array( bson *b, const char *name ) {
     if ( bson_append_estart( b, BSON_ARRAY, name, 5 ) == BSON_ERROR ) return BSON_ERROR;
-    b->stack[ b->stackPos++ ] = b->cur - b->data;
+    if ( b->stackPos >= b->stackSize && _bson_append_grow_stack( b ) == BSON_ERROR ) return BSON_ERROR;
+    b->stackPtr[ b->stackPos++ ] = _bson_position(b);
     bson_append32( b , &zero );
     return BSON_OK;
 }
@@ -958,7 +1008,7 @@ MONGO_EXPORT int bson_append_finish_object( bson *b ) {
     if ( bson_ensure_space( b, 1 ) == BSON_ERROR ) return BSON_ERROR;
     bson_append_byte( b , 0 );
 
-    start = b->data + b->stack[ --b->stackPos ];
+    start = b->data + b->stackPtr[ --b->stackPos ];
     if ( b->cur - start >= INT32_MAX ) {
         b->err = BSON_SIZE_OVERFLOW;
         return BSON_ERROR;
