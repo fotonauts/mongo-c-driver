@@ -88,7 +88,7 @@ env.AlwaysBuild("docs")
 PLATFORM_TESTS = []
 NET_LIB = "src/env.c"
 if GetOption('standard_env'):
-    env.Append( CPPFLAGS=" -D_POSIX_SOURCE" )
+    env.Append( CPPFLAGS=" -DMONGO_ENV_STANDARD " )
 elif os.sys.platform in ["darwin", "linux2"]:
     PLATFORM_TESTS = [ "env_posix", "unix_socket" ]
 elif 'win32' == os.sys.platform:
@@ -115,6 +115,11 @@ if os.sys.platform in ["darwin", "linux2"]:
 elif 'win32' == os.sys.platform:
     env.Append( CPPFLAGS="-DMONGO_HAVE_STDINT" )
     env.Append( LIBS='ws2_32' )
+    if env['CC'] == 'gcc':
+        if not GetOption('standard_env'):
+            env.Append( CPPFLAGS=" -D_WIN32_WINNT=0x0501 " )
+        if GetOption('optimize'):
+            env.Append( CPPFLAGS=" -O3 " )
 
 #we shouldn't need these options in c99 mode
 if not GetOption('use_c99'):
@@ -274,7 +279,7 @@ def run_tests( root, tests, env, alias ):
         test_alias = env.Alias(alias, [test], test[0].abspath + ' 2> ' + os.path.devnull)
         AlwaysBuild(test_alias)
 
-tests = Split("write_concern commands sizes resize endian_swap bson bson_subobject simple update errors "
+tests = Split("write_concern commands sizes resize endian_swap bson_alloc bson bson_subobject simple update errors "
 "count_delete auth gridfs validate examples helpers oid functions cursors")
 if os.sys.platform != 'win32':
     tests.append("bcon")
