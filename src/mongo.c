@@ -1722,7 +1722,7 @@ MONGO_EXPORT int mongo_create_capped_collection( mongo *conn, const char *db,
 
 MONGO_EXPORT double mongo_count( mongo *conn, const char *db, const char *coll, const bson *query ) {
     bson cmd;
-    bson out;
+    bson out = {NULL, 0};
     double count = -1;
 
     bson_init( &cmd );
