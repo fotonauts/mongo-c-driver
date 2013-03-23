@@ -587,6 +587,10 @@ static void mongo_replica_set_check_seed( mongo *conn ) {
     const char *host_string;
     mongo_host_port *host_port = NULL;
 
+    out.data = NULL;
+
+    hosts.data = NULL;
+
     if( mongo_simple_int_command( conn, "admin", "ismaster", 1, &out ) == MONGO_OK ) {
 
         if( bson_find( &it, &out, "hosts" ) ) {
