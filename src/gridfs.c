@@ -575,7 +575,7 @@ static void gridfile_init_flags(gridfile *gfile) {
   bson_iterator it = INIT_ITERATOR;
 
   if( bson_find(&it, gfile->meta, "flags") != BSON_EOO ) {
-    gfile->flags = (gridfs_offset)bson_iterator_int(&it);
+    gfile->flags = bson_iterator_int(&it);
   } else {
     gfile->flags = 0;
   }
