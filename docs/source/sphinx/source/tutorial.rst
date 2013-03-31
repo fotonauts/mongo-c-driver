@@ -192,7 +192,7 @@ We can do batch inserts as well:
       ps = ( bson ** )malloc( sizeof( bson * ) * n);
 
       for ( i = 0; i < n; i++ ) {
-        p = bson_create();
+        p = ( bson * )malloc( sizeof( bson ) );
         bson_init( p );
         bson_append_new_oid( p_buf, "_id" );
         bson_append_string( p_buf, "name", names[i] );
@@ -205,7 +205,7 @@ We can do batch inserts as well:
 
       for ( i = 0; i < n; i++ ) {
         bson_destroy( ps[i] );
-        bson_dispose( ps[i] );
+        free( ps[i] );
       }
     }
 
