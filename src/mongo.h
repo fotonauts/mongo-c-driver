@@ -25,6 +25,13 @@
 
 MONGO_EXTERN_C_START
 
+#if !defined(MONGO_ENV_STANDARD) && (defined(__APPLE__) || defined(__linux) || defined(__unix) || defined(__posix))
+  typedef int SOCKET; 
+#else
+  typedef size_t SOCKET; /* Defined socket as size_t to avoid coupling here with Winsock header files. It creates other issues in other files because 
+                            of redefined types that are used on .c files */
+#endif
+
 #define MONGO_MAJOR 0
 #define MONGO_MINOR 7
 #define MONGO_PATCH 0
@@ -164,7 +171,7 @@ typedef struct {
 typedef struct mongo {
     mongo_host_port *primary;  /**< Primary connection info. */
     mongo_replica_set *replica_set;    /**< replica_set object if connected to a replica set. */
-    int sock;                  /**< Socket file descriptor. */
+    SOCKET sock;                  /**< Socket file descriptor. */
     int flags;                 /**< Flags on this connection object. */
     int conn_timeout_ms;       /**< Connection timeout in milliseconds. */
     int op_timeout_ms;         /**< Read and write timeout in milliseconds. */
@@ -394,6 +401,26 @@ MONGO_EXPORT void mongo_destroy( mongo *conn );
 MONGO_EXPORT void mongo_set_write_concern( mongo *conn,
         mongo_write_concern *write_concern );
 
+/**
+ * The following functions get the attributes of the write_concern object.
+ *
+ */
+MONGO_EXPORT int mongo_write_concern_get_w( mongo_write_concern *write_concern );
+MONGO_EXPORT int mongo_write_concern_get_wtimeout( mongo_write_concern *write_concern );
+MONGO_EXPORT int mongo_write_concern_get_j( mongo_write_concern *write_concern );
+MONGO_EXPORT int mongo_write_concern_get_fsync( mongo_write_concern *write_concern );
+MONGO_EXPORT const char* mongo_write_concern_get_mode( mongo_write_concern *write_concern );
+MONGO_EXPORT bson* mongo_write_concern_get_cmd( mongo_write_concern *write_concern );
+
+/**
+ * The following functions set the attributes of the write_concern object.
+ *
+ */
+MONGO_EXPORT void mongo_write_concern_set_w( mongo_write_concern *write_concern, int w );
+MONGO_EXPORT void mongo_write_concern_set_wtimeout( mongo_write_concern *write_concern, int wtimeout );
+MONGO_EXPORT void mongo_write_concern_set_j( mongo_write_concern *write_concern, int j );
+MONGO_EXPORT void mongo_write_concern_set_fsync( mongo_write_concern *write_concern, int fsync );
+MONGO_EXPORT void mongo_write_concern_set_mode( mongo_write_concern *write_concern, const char* mode );
 
 /*********************************************************************
 CRUD API
@@ -912,19 +939,19 @@ MONGO_EXPORT void mongo_cmd_reset_error( mongo *conn, const char *db );
 Utility API
 **********************************************************************/
 
-MONGO_EXPORT mongo* mongo_create( void );
-MONGO_EXPORT void mongo_dispose(mongo* conn);
+MONGO_EXPORT mongo* mongo_alloc( void );
+MONGO_EXPORT void mongo_dealloc(mongo* conn);
 MONGO_EXPORT int mongo_get_err(mongo* conn);
 MONGO_EXPORT int mongo_is_connected(mongo* conn);
 MONGO_EXPORT int mongo_get_op_timeout(mongo* conn);
 MONGO_EXPORT const char* mongo_get_primary(mongo* conn);
-MONGO_EXPORT int mongo_get_socket(mongo* conn) ;
+MONGO_EXPORT SOCKET mongo_get_socket(mongo* conn) ;
 MONGO_EXPORT int mongo_get_host_count(mongo* conn);
 MONGO_EXPORT const char* mongo_get_host(mongo* conn, int i);
-MONGO_EXPORT mongo_write_concern* mongo_write_concern_create( void );
-MONGO_EXPORT void mongo_write_concern_dispose(mongo_write_concern* write_concern);
-MONGO_EXPORT mongo_cursor* mongo_cursor_create( void );
-MONGO_EXPORT void mongo_cursor_dispose(mongo_cursor* cursor);
+MONGO_EXPORT mongo_write_concern* mongo_write_concern_alloc( void );
+MONGO_EXPORT void mongo_write_concern_dealloc(mongo_write_concern* write_concern);
+MONGO_EXPORT mongo_cursor* mongo_cursor_alloc( void );
+MONGO_EXPORT void mongo_cursor_dealloc(mongo_cursor* cursor);
 MONGO_EXPORT int  mongo_get_server_err(mongo* conn);
 MONGO_EXPORT const char*  mongo_get_server_err_string(mongo* conn);
 

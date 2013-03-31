@@ -15,8 +15,8 @@
  *    limitations under the License.
  */
 
-#ifdef _MSC_VER
-#define _CRT_SECURE_NO_WARNINGS
+#if _MSC_VER && ! _CRT_SECURE_NO_WARNINGS
+  #define _CRT_SECURE_NO_WARNINGS
 #endif
 
 #include "mongo.h"
@@ -26,13 +26,13 @@
 #include <string.h>
 #include <assert.h>
 
-MONGO_EXPORT mongo* mongo_create( void ) {
-    return (mongo*)bson_malloc(sizeof(mongo));
+MONGO_EXPORT mongo* mongo_alloc( void ) {
+    return ( mongo* )bson_malloc( sizeof( mongo ) );
 }
 
 
-MONGO_EXPORT void mongo_dispose(mongo* conn) {
-    bson_free(conn);
+MONGO_EXPORT void mongo_dealloc(mongo* conn) {
+    bson_free( conn );
 }
 
 MONGO_EXPORT int mongo_get_err(mongo* conn) {
@@ -65,7 +65,7 @@ MONGO_EXPORT const char* mongo_get_primary(mongo* conn) {
 }
 
 
-MONGO_EXPORT int mongo_get_socket(mongo* conn) {
+MONGO_EXPORT SOCKET mongo_get_socket(mongo* conn) {
     mongo* conn_ = (mongo*)conn;
     return conn_->sock;
 }
@@ -95,23 +95,23 @@ MONGO_EXPORT const char* mongo_get_host(mongo* conn, int i) {
     return 0;
 }
 
-MONGO_EXPORT mongo_write_concern* mongo_write_concern_create( void ) {
-    return (mongo_write_concern*)bson_malloc(sizeof(mongo_write_concern));
+MONGO_EXPORT mongo_write_concern* mongo_write_concern_alloc( void ) {
+    return ( mongo_write_concern* )bson_malloc( sizeof( mongo_write_concern ) );
 }
 
 
-MONGO_EXPORT void mongo_write_concern_dispose(mongo_write_concern* write_concern) {
-    bson_free(write_concern);
+MONGO_EXPORT void mongo_write_concern_dealloc( mongo_write_concern* write_concern ) {
+    bson_free( write_concern );
 }
 
 
-MONGO_EXPORT mongo_cursor* mongo_cursor_create( void ) {
-    return (mongo_cursor*)bson_malloc(sizeof(mongo_cursor));
+MONGO_EXPORT mongo_cursor* mongo_cursor_alloc( void ) {
+    return ( mongo_cursor* )bson_malloc( sizeof( mongo_cursor ) );
 }
 
 
-MONGO_EXPORT void mongo_cursor_dispose(mongo_cursor* cursor) {
-    bson_free(cursor);
+MONGO_EXPORT void mongo_cursor_dealloc( mongo_cursor* cursor ) {
+    bson_free( cursor );
 }
 
 
@@ -476,7 +476,7 @@ MONGO_EXPORT void mongo_init( mongo *conn ) {
 MONGO_EXPORT int mongo_client( mongo *conn , const char *host, int port ) {
     mongo_init( conn );
 
-    conn->primary = bson_malloc( sizeof( mongo_host_port ) );
+    conn->primary = (mongo_host_port*)bson_malloc( sizeof( mongo_host_port ) );
     strncpy( conn->primary->host, host, strlen( host ) + 1 );
     conn->primary->port = port;
     conn->primary->next = NULL;
@@ -498,14 +498,14 @@ MONGO_EXPORT int mongo_connect( mongo *conn , const char *host, int port ) {
 MONGO_EXPORT void mongo_replica_set_init( mongo *conn, const char *name ) {
     mongo_init( conn );
 
-    conn->replica_set = bson_malloc( sizeof( mongo_replica_set ) );
+    conn->replica_set = (mongo_replica_set*)bson_malloc( sizeof( mongo_replica_set ) );
     conn->replica_set->primary_connected = 0;
     conn->replica_set->seeds = NULL;
     conn->replica_set->hosts = NULL;
     conn->replica_set->name = ( char * )bson_malloc( strlen( name ) + 1 );
     memcpy( conn->replica_set->name, name, strlen( name ) + 1  );
 
-    conn->primary = bson_malloc( sizeof( mongo_host_port ) );
+    conn->primary = (mongo_host_port*)bson_malloc( sizeof( mongo_host_port ) );
     conn->primary->host[0] = '\0';
     conn->primary->next = NULL;
 }
@@ -516,7 +516,7 @@ MONGO_EXPORT void mongo_replset_init( mongo *conn, const char *name ) {
 }
 
 static void mongo_replica_set_add_node( mongo_host_port **list, const char *host, int port ) {
-    mongo_host_port *host_port = bson_malloc( sizeof( mongo_host_port ) );
+    mongo_host_port *host_port = (mongo_host_port*)bson_malloc( sizeof( mongo_host_port ) );
     host_port->port = port;
     host_port->next = NULL;
     strncpy( host_port->host, host, strlen( host ) + 1 );
@@ -580,7 +580,6 @@ void mongo_parse_host( const char *host_string, mongo_host_port *host_port ) {
 
 static void mongo_replica_set_check_seed( mongo *conn ) {
     bson out;
-    bson hosts;
     const char *data;
     bson_iterator it;
     bson_iterator it_sub;
@@ -588,9 +587,6 @@ static void mongo_replica_set_check_seed( mongo *conn ) {
     mongo_host_port *host_port = NULL;
 
     out.data = NULL;
-
-    hosts.data = NULL;
-
     if( mongo_simple_int_command( conn, "admin", "ismaster", 1, &out ) == MONGO_OK ) {
 
         if( bson_find( &it, &out, "hosts" ) ) {
@@ -602,7 +598,7 @@ static void mongo_replica_set_check_seed( mongo *conn ) {
             while( bson_iterator_next( &it_sub ) ) {
                 host_string = bson_iterator_string( &it_sub );
 
-                host_port = bson_malloc( sizeof( mongo_host_port ) );
+                host_port = (mongo_host_port*)bson_malloc( sizeof( mongo_host_port ) );
 
                 if( host_port ) {
                     mongo_parse_host( host_string, host_port );
@@ -617,7 +613,6 @@ static void mongo_replica_set_check_seed( mongo *conn ) {
     }
 
     bson_destroy( &out );
-    bson_destroy( &hosts );
     mongo_env_close_socket( conn->sock );
     conn->sock = 0;
     conn->connected = 0;
@@ -905,6 +900,19 @@ static int mongo_choose_write_concern( mongo *conn,
 CRUD API
 **********************************************************************/
 
+static int mongo_message_send_and_check_write_concern( mongo *conn, const char *ns, mongo_message *mm, mongo_write_concern *write_concern ) {
+   if( write_concern ) {
+        if( mongo_message_send( conn, mm ) == MONGO_ERROR ) {
+            return MONGO_ERROR;
+        }
+
+        return mongo_check_last_error( conn, ns, write_concern );
+    }
+    else {
+        return mongo_message_send( conn, mm );
+    }
+}
+
 MONGO_EXPORT int mongo_insert( mongo *conn, const char *ns,
                                const bson *bson, mongo_write_concern *custom_write_concern ) {
 
@@ -939,19 +947,7 @@ MONGO_EXPORT int mongo_insert( mongo *conn, const char *ns,
     data = mongo_data_append( data, ns, strlen( ns ) + 1 );
     mongo_data_append( data, bson->data, bson_size( bson ) );
 
-
-    /* TODO: refactor so that we can send the insert message
-       and the getlasterror messages together. */
-    if( write_concern ) {
-        if( mongo_message_send( conn, mm ) == MONGO_ERROR ) {
-            return MONGO_ERROR;
-        }
-
-        return mongo_check_last_error( conn, ns, write_concern );
-    }
-    else {
-        return mongo_message_send( conn, mm );
-    }
+    return mongo_message_send_and_check_write_concern( conn, ns, mm, write_concern ); 
 }
 
 MONGO_EXPORT int mongo_insert_batch( mongo *conn, const char *ns,
@@ -1001,18 +997,7 @@ MONGO_EXPORT int mongo_insert_batch( mongo *conn, const char *ns,
         data = mongo_data_append( data, bsons[i]->data, bson_size( bsons[i] ) );
     }
 
-    /* TODO: refactor so that we can send the insert message
-     * and the getlasterror messages together. */
-    if( write_concern ) {
-        if( mongo_message_send( conn, mm ) == MONGO_ERROR ) {
-            return MONGO_ERROR;
-        }
-
-        return mongo_check_last_error( conn, ns, write_concern );
-    }
-    else {
-        return mongo_message_send( conn, mm );
-    }
+    return mongo_message_send_and_check_write_concern( conn, ns, mm, write_concern ); 
 }
 
 MONGO_EXPORT int mongo_update( mongo *conn, const char *ns, const bson *cond,
@@ -1053,18 +1038,7 @@ MONGO_EXPORT int mongo_update( mongo *conn, const char *ns, const bson *cond,
     data = mongo_data_append( data, cond->data, bson_size( cond ) );
     mongo_data_append( data, op->data, bson_size( op ) );
 
-    /* TODO: refactor so that we can send the insert message
-     * and the getlasterror messages together. */
-    if( write_concern ) {
-        if( mongo_message_send( conn, mm ) == MONGO_ERROR ) {
-            return MONGO_ERROR;
-        }
-
-        return mongo_check_last_error( conn, ns, write_concern );
-    }
-    else {
-        return mongo_message_send( conn, mm );
-    }
+    return mongo_message_send_and_check_write_concern( conn, ns, mm, write_concern ); 
 }
 
 MONGO_EXPORT int mongo_remove( mongo *conn, const char *ns, const bson *cond,
@@ -1103,18 +1077,7 @@ MONGO_EXPORT int mongo_remove( mongo *conn, const char *ns, const bson *cond,
     data = mongo_data_append32( data, &ZERO );
     mongo_data_append( data, cond->data, bson_size( cond ) );
 
-    /* TODO: refactor so that we can send the insert message
-     * and the getlasterror messages together. */
-    if( write_concern ) {
-        if( mongo_message_send( conn, mm ) == MONGO_ERROR ) {
-            return MONGO_ERROR;
-        }
-
-        return mongo_check_last_error( conn, ns, write_concern );
-    }
-    else {
-        return mongo_message_send( conn, mm );
-    }
+    return mongo_message_send_and_check_write_concern( conn, ns, mm, write_concern ); 
 }
 
 
@@ -1135,7 +1098,7 @@ MONGO_EXPORT int mongo_write_concern_finish( mongo_write_concern *write_concern 
         command = write_concern->cmd;
     }
     else
-        command = bson_create();
+        command = bson_alloc();
 
     if( !command ) {
         return MONGO_ERROR;
@@ -1183,7 +1146,7 @@ MONGO_EXPORT void mongo_write_concern_destroy( mongo_write_concern *write_concer
 
     if( write_concern->cmd ) {
         bson_destroy( write_concern->cmd );
-        bson_dispose( write_concern->cmd );
+        bson_dealloc( write_concern->cmd );
         write_concern->cmd = NULL;
     }
 }
@@ -1192,6 +1155,52 @@ MONGO_EXPORT void mongo_set_write_concern( mongo *conn,
         mongo_write_concern *write_concern ) {
 
     conn->write_concern = write_concern;
+}
+
+MONGO_EXPORT int mongo_write_concern_get_w( mongo_write_concern *write_concern ){    
+    return write_concern->w;
+}
+
+MONGO_EXPORT int mongo_write_concern_get_wtimeout( mongo_write_concern *write_concern ){    
+    return write_concern->wtimeout;
+}
+
+MONGO_EXPORT int mongo_write_concern_get_j( mongo_write_concern *write_concern ){    
+    return write_concern->j;
+}
+
+MONGO_EXPORT int mongo_write_concern_get_fsync( mongo_write_concern *write_concern ){    
+    return write_concern->fsync;
+}
+
+MONGO_EXPORT const char* mongo_write_concern_get_mode( mongo_write_concern *write_concern ){    
+    return write_concern->mode;
+}
+
+MONGO_EXPORT bson* mongo_write_concern_get_cmd( mongo_write_concern *write_concern ){    
+    return write_concern->cmd;
+}
+
+MONGO_EXPORT void mongo_write_concern_set_w( mongo_write_concern *write_concern, int w ){    
+    write_concern->w = w;
+}
+
+MONGO_EXPORT void mongo_write_concern_set_wtimeout( mongo_write_concern *write_concern, int wtimeout ){    
+    write_concern->wtimeout = wtimeout;
+
+}
+
+MONGO_EXPORT void mongo_write_concern_set_j( mongo_write_concern *write_concern, int j ){    
+    write_concern->j = j;
+}
+
+MONGO_EXPORT void mongo_write_concern_set_fsync( mongo_write_concern *write_concern, int fsync ){    
+    write_concern->fsync = fsync;
+
+}
+
+MONGO_EXPORT void mongo_write_concern_set_mode( mongo_write_concern *write_concern, const char* mode ){    
+    write_concern->mode = mode;
 }
 
 static int mongo_cursor_op_query( mongo_cursor *cursor ) {
@@ -1323,7 +1332,7 @@ static int mongo_cursor_get_more( mongo_cursor *cursor ) {
 MONGO_EXPORT mongo_cursor *mongo_find( mongo *conn, const char *ns, const bson *query,
                                        const bson *fields, int limit, int skip, int options ) {
 
-    mongo_cursor *cursor = mongo_cursor_create();
+    mongo_cursor *cursor = mongo_cursor_alloc();
     mongo_cursor_init( cursor, conn, ns );
     cursor->flags |= MONGO_CURSOR_MUST_FREE;
 
@@ -1403,6 +1412,8 @@ MONGO_EXPORT const bson *mongo_cursor_bson( mongo_cursor *cursor ) {
 MONGO_EXPORT int mongo_cursor_next( mongo_cursor *cursor ) {
     char *next_object;
     char *message_end;
+
+    if( cursor == NULL ) return MONGO_ERROR;
 
     if( ! ( cursor->flags & MONGO_CURSOR_QUERY_SENT ) )
         if( mongo_cursor_op_query( cursor ) != MONGO_OK )
