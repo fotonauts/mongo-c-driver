@@ -848,7 +848,7 @@ static int mongo_cursor_bson_valid( mongo_cursor *cursor, const bson *bson ) {
 
 static int mongo_check_last_error( mongo *conn, const char *ns,
                                    mongo_write_concern *write_concern ) {
-    bson response = {NULL, 0};
+    bson response = INIT_BSON;
     bson_iterator it;
     int res = 0;
     char *cmd_ns = mongo_ns_to_cmd_db( ns );
@@ -1623,7 +1623,7 @@ MONGO_EXPORT double mongo_index_count( mongo *conn, const char *ns ) {
 int mongo_drop_indexes( mongo *conn, const char *ns, bson *index )
 {
     bson cmd;
-    bson out = {NULL, 0};
+    bson out = INIT_BSON;
     const char *database_name;
     const char *collection_name;
     int result;
@@ -1647,7 +1647,7 @@ int mongo_drop_indexes( mongo *conn, const char *ns, bson *index )
 int mongo_reindex( mongo *conn, const char *ns )
 {
     bson cmd;
-    bson out = {NULL, 0};
+    bson out = INIT_BSON;
     const char *database_name;
     const char *collection_name;
     int result;
@@ -1737,7 +1737,7 @@ MONGO_EXPORT int mongo_create_capped_collection( mongo *conn, const char *db,
 
 MONGO_EXPORT double mongo_count( mongo *conn, const char *db, const char *coll, const bson *query ) {
     bson cmd;
-    bson out = {NULL, 0};
+    bson out = INIT_BSON;
     double count = -1;
 
     bson_init( &cmd );
@@ -1763,7 +1763,7 @@ MONGO_EXPORT double mongo_count( mongo *conn, const char *db, const char *coll, 
 
 MONGO_EXPORT int mongo_run_command( mongo *conn, const char *db, const bson *command,
                                     bson *out ) {
-    bson response = {NULL, 0};
+    bson response = INIT_BSON;
     bson_iterator it;
     size_t sl = strlen( db );
     char *ns = bson_malloc( sl + 5 + 1 ); /* ".$cmd" + nul */
@@ -1840,7 +1840,7 @@ MONGO_EXPORT int mongo_cmd_create_collection( mongo *conn, const char *db, const
 
 MONGO_EXPORT int mongo_cmd_create_capped_collection( mongo *conn, const char *db, const char *collection, int64_t capsize ) {
 
-    bson out = {NULL, 0};
+    bson out = INIT_BSON;
     int result;
     
     bson cmd;
@@ -1861,7 +1861,7 @@ MONGO_EXPORT int mongo_cmd_create_capped_collection( mongo *conn, const char *db
 MONGO_EXPORT int mongo_cmd_rename_collection( mongo *conn, const char *db, const char *oldcollection, const char *newcollection )
 {
     
-    bson out = {NULL, 0};
+    bson out = INIT_BSON;
     int result;
     size_t new_nsname_size, old_nsname_size;
     char *new_nsname;
