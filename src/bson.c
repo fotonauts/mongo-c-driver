@@ -828,6 +828,18 @@ MONGO_EXPORT int bson_append_undefined( bson *b, const char *name ) {
     return BSON_OK;
 }
 
+MONGO_EXPORT int bson_append_maxkey( bson *b, const char *name ) {
+    if ( bson_append_estart( b, BSON_MAXKEY, name, 0 ) == BSON_ERROR )
+        return BSON_ERROR;
+    return BSON_OK;
+}
+
+MONGO_EXPORT int bson_append_minkey( bson *b, const char *name ) {
+    if ( bson_append_estart( b, BSON_MINKEY, name, 0 ) == BSON_ERROR )
+        return BSON_ERROR;
+    return BSON_OK;
+}
+
 static int bson_append_string_base( bson *b, const char *name,
                                     const char *value, size_t len, bson_type type ) {
 
