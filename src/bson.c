@@ -395,7 +395,8 @@ MONGO_EXPORT bson_type bson_iterator_next( bson_iterator *i ) {
 }
 
 MONGO_EXPORT bson_type bson_iterator_type( const bson_iterator *i ) {
-    return ( bson_type )(unsigned char)i->cur[0];
+    // problem to convert 0xFF to 255
+    return ( bson_type )( unsigned char )i->cur[0];
 }
 
 MONGO_EXPORT const char *bson_iterator_key( const bson_iterator *i ) {

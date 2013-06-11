@@ -958,7 +958,7 @@ MONGO_EXPORT int bson_append_null( bson *b, const char *name );
 MONGO_EXPORT int bson_append_undefined( bson *b, const char *name );
 
 /**
- * Append an undefined value to a bson.
+ * Append a maxkey value to a bson.
  *
  * @param b the bson to append to.
  * @param name the key for the maxkey value.
@@ -968,7 +968,7 @@ MONGO_EXPORT int bson_append_undefined( bson *b, const char *name );
 MONGO_EXPORT int bson_append_maxkey( bson *b, const char *name );
 
 /**
- * Append an undefined value to a bson.
+ * Append a minkey value to a bson.
  *
  * @param b the bson to append to.
  * @param name the key for the minkey value.
