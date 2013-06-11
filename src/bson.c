@@ -337,6 +337,8 @@ MONGO_EXPORT bson_type bson_iterator_next( bson_iterator *i ) {
         return BSON_EOO; /* don't advance */
     case BSON_UNDEFINED:
     case BSON_NULL:
+    case BSON_MINKEY:
+    case BSON_MAXKEY:
         ds = 0;
         break;
     case BSON_BOOL:
@@ -393,7 +395,7 @@ MONGO_EXPORT bson_type bson_iterator_next( bson_iterator *i ) {
 }
 
 MONGO_EXPORT bson_type bson_iterator_type( const bson_iterator *i ) {
-    return ( bson_type )i->cur[0];
+    return ( bson_type )(unsigned char)i->cur[0];
 }
 
 MONGO_EXPORT const char *bson_iterator_key( const bson_iterator *i ) {
