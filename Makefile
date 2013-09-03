@@ -16,8 +16,8 @@
 
 # Version
 MONGO_MAJOR=0
-MONGO_MINOR=7
-MONGO_PATCH=1
+MONGO_MINOR=8
+MONGO_PATCH=0
 BSON_MAJOR=$(MONGO_MAJOR)
 BSON_MINOR=$(MONGO_MINOR)
 BSON_PATCH=$(MONGO_PATCH)
@@ -35,6 +35,7 @@ TESTS=test_auth test_bcon test_bson test_bson_subobject test_connect test_count_
   test_functions test_gridfs test_helpers \
   test_oid test_resize test_simple test_sizes test_update \
   test_validate test_write_concern test_commands
+EXAMPLES=example_example
 MONGO_OBJECTS=src/bcon.o src/bson.o src/encoding.o src/gridfs.o src/md5.o src/mongo.o \
  src/numbers.o
 BSON_OBJECTS=src/bcon.o src/bson.o src/numbers.o src/encoding.o
@@ -116,12 +117,14 @@ endif
 ifeq ($(kernel_name),Darwin)
     ALL_CFLAGS+=-std=$(STD) $(CFLAGS) $(OPTIMIZATION) $(WARNINGS) $(DEBUG) $(ALL_DEFINES) -D_DARWIN_C_SOURCE
     DYLIBSUFFIX=dylib
-    MONGO_DYLIB_MINOR_NAME=$(MONGO_LIBNAME).$(DYLIBSUFFIX).$(MONGO_MAJOR).$(MONGO_MINOR)
-    MONGO_DYLIB_MAJOR_NAME=$(MONGO_LIBNAME).$(DYLIBSUFFIX).$(MONGO_MAJOR)
+    MONGO_DYLIB_MAJOR_NAME=$(MONGO_LIBNAME).$(MONGO_MAJOR).$(DYLIBSUFFIX)
+    MONGO_DYLIB_MINOR_NAME=$(MONGO_LIBNAME).$(MONGO_MAJOR).$(MONGO_MINOR).$(DYLIBSUFFIX)
+    MONGO_DYLIB_PATCH_NAME=$(MONGO_LIBNAME).$(MONGO_MAJOR).$(MONGO_MINOR).$(MONGO_PATCH).$(DYLIBSUFFIX)
     MONGO_DYLIB_MAKE_CMD=$(CC) -shared -Wl,-install_name,$(MONGO_DYLIB_MINOR_NAME) -o $(MONGO_DYLIBNAME) $(ALL_LDFLAGS) $(DYN_MONGO_OBJECTS)
 
-    BSON_DYLIB_MINOR_NAME=$(BSON_LIBNAME).$(DYLIBSUFFIX).$(BSON_MAJOR).$(BSON_MINOR)
-    BSON_DYLIB_MAJOR_NAME=$(BSON_LIBNAME).$(DYLIBSUFFIX).$(BSON_MAJOR)
+    BSON_DYLIB_MAJOR_NAME=$(BSON_LIBNAME).$(BSON_MAJOR).$(DYLIBSUFFIX)
+    BSON_DYLIB_MINOR_NAME=$(BSON_LIBNAME).$(BSON_MAJOR).$(BSON_MINOR).$(DYLIBSUFFIX)
+    BSON_DYLIB_PATCH_NAME=$(BSON_LIBNAME).$(BSON_MAJOR).$(BSON_MINOR).$(BSON_PATCH).$(DYLIBSUFFIX)
     BSON_DYLIB_MAKE_CMD=$(CC) -shared -Wl,-install_name,$(BSON_DYLIB_MINOR_NAME) -o $(BSON_DYLIBNAME) $(ALL_LDFLAGS) $(DYN_BSON_OBJECTS)
 endif
 
@@ -175,8 +178,11 @@ install:
 scan-build: clean
 	scan-build -V -v make
 
-test: $(TESTS)
+test: example $(TESTS)
 	sh runtests.sh
+
+example: $(EXAMPLES)
+	set -x; for i in $(EXAMPLES); do ./$$i; done
 
 valgrind: $(TESTS)
 	sh runtests.sh -v
@@ -188,7 +194,7 @@ zip: clobber
 	zip -r /tmp/mongo-c-driver-$(MONGO_MAJOR).$(MONGO_MINOR).$(MONGO_PATCH).zip $(shell ls)
 
 clean:
-	rm -rf src/*.o src/*.os test/*.o test/*.os test_* .scon* config.log docs/*/*.pyc
+	rm -rf example_* src/*.o src/*.os test/*.o test/*.os test_* .scon* config.log docs/*/*.pyc
 
 clobber: clean
 	rm -rf $(MONGO_DYLIBNAME) $(MONGO_STLIBNAME) $(BSON_DYLIBNAME) $(BSON_STLIBNAME) docs/html docs/source/doxygen
@@ -200,7 +206,10 @@ deps:
 	$(MAKE) CFLAGS="-m32" LDFLAGS="-pg"
 
 test_%: test/%_test.c test/test.h $(MONGO_STLIBNAME)
-	$(CC) -o $@ -L. -Isrc $(TEST_DEFINES) $(ALL_LDFLAGS) $< $(MONGO_STLIBNAME)
+	$(CC) -o $@ -L. -Isrc $(TEST_DEFINES) $(ALL_CFLAGS) $(ALL_LDFLAGS) $< $(MONGO_STLIBNAME)
+
+example_%: docs/examples/%.c $(MONGO_STLIBNAME)
+	$(CC) -o $@ -L. -Isrc $(TEST_DEFINES) $(ALL_CFLAGS) $(ALL_LDFLAGS) $< $(MONGO_STLIBNAME)
 
 %.o: %.c
 	$(CC) -o $@ -c $(ALL_CFLAGS) $<

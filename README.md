@@ -1,5 +1,7 @@
 # MongoDB C Driver
 
+Important note - please see [HISTORY.md](HISTORY.md) for API changes.
+
 This is then 10gen-supported MongoDB C driver. There are two goals for this driver.
 The first is to provide a strict, default compilation option for ultimate portability,
 no dependencies, and generic embeddability.
@@ -24,9 +26,9 @@ The html docs will appear in docs/html.
 # Building
 
 First check out the version you want to build. *Always build from a particular tag, since HEAD may be
-a work in progress.* For example, to build version 0.7.1, run:
+a work in progress.* For example, to build version 0.8, run:
 
-    git checkout v0.7.1
+    git checkout v0.8
 
 You can then build the driver with scons:
 
@@ -64,6 +66,5 @@ using [JIRA](http://jira.mongodb.org/browse/CDRIVER).
 
 Unless otherwise specified in a source file, sources in this
 repository are published under the terms of the Apache License version
-2.0, a copy of which is in this repository as APACHE-2.0.txt.
-
+2.0, a copy of which is in this repository in the file named LICENSE.
 

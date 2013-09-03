@@ -19,6 +19,10 @@
   #define _CRT_SECURE_NO_WARNINGS
 #endif
 
+#if _MSC_VER
+  #define snprintf _snprintf
+#endif
+
 #include "mongo.h"
 #include "md5.h"
 #include "env.h"
@@ -694,6 +698,7 @@ MONGO_EXPORT int mongo_replica_set_client( mongo *conn ) {
 
                 /* Primary found, so return. */
                 else if( conn->replica_set->primary_connected ) {
+                    bson_free( conn->primary );
                     conn->primary = bson_malloc( sizeof( mongo_host_port ) );
                     snprintf( conn->primary->host, MAXHOSTNAMELEN, "%s", node->host );
                     conn->primary->port = node->port;
@@ -1308,10 +1313,9 @@ static int mongo_cursor_get_more( mongo_cursor *cursor ) {
         }
 
         res = mongo_read_response( cursor->conn, &( cursor->reply ) );
-        if( res != MONGO_OK ) {
-            mongo_cursor_destroy( cursor );
+        if( res != MONGO_OK )
             return MONGO_ERROR;
-        }
+
         cursor->current.data = NULL;
         cursor->seen += cursor->reply->fields.num;
 
@@ -1419,8 +1423,10 @@ MONGO_EXPORT int mongo_cursor_next( mongo_cursor *cursor ) {
             }
         }
 
-        else
+        else {
+            cursor->err = MONGO_CURSOR_INVALID;
             return MONGO_ERROR;
+        }
     }
 
     /* first */
@@ -1533,11 +1539,15 @@ MONGO_EXPORT int mongo_create_index( mongo *conn, const char *ns, const bson *ke
     p = strchr( idxns, '.' );
     if ( !p ) {
 	    bson_destroy( &b );
+        if( out )
+            bson_init_zero(out);
 	    return MONGO_ERROR;
     }
     strcpy( p, ".system.indexes" );
     if ( mongo_insert( conn, idxns, &b, NULL ) != MONGO_OK) {
 	    bson_destroy( &b );
+        if( out )
+            bson_init_zero(out);
 	    return MONGO_ERROR;
     }
     bson_destroy( &b );
