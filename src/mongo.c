@@ -1206,7 +1206,7 @@ static int mongo_cursor_op_query( mongo_cursor *cursor ) {
                                bson_size( cursor->fields ) ,
                                0 , 0 , MONGO_OP_QUERY );
     if( mm == NULL ) {
-        cursor->err = MONGO_CURSOR_OVERFLOW;
+        cursor->err = MONGO_CURSOR_BSON_TOO_LARGE;
         return MONGO_ERROR;
     }
 
@@ -1276,7 +1276,7 @@ static int mongo_cursor_get_more( mongo_cursor *cursor ) {
                                    +8 /*cursorID*/
                                    , 0, 0, MONGO_OP_GET_MORE );
         if( mm == NULL ) {
-            cursor->err = MONGO_CURSOR_OVERFLOW;
+            cursor->err = MONGO_CURSOR_BSON_TOO_LARGE;
             return MONGO_ERROR;
         }
 
@@ -1461,7 +1461,7 @@ MONGO_EXPORT int mongo_cursor_destroy( mongo_cursor *cursor ) {
                             +8 /*cursorID*/
                             , 0, 0, MONGO_OP_KILL_CURSORS );
         if( mm == NULL ) {
-            cursor->err = MONGO_CURSOR_OVERFLOW;
+            cursor->err = MONGO_CURSOR_BSON_TOO_LARGE;
             return MONGO_ERROR;
         }
         data = &mm->data;
