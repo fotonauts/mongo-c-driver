@@ -321,18 +321,6 @@ static mongo_message *mongo_message_create( size_t len , int id , int responseTo
     return mm;
 }
 
-
-static mongo_message *mongo_connection_message_create( mongo *conn, size_t len , int id , int responseTo , int op ) {
-    mongo_message *mm = mongo_message_create( len , id , responseTo , op );
-
-    if( mm == NULL) {
-        conn->err = MONGO_BSON_TOO_LARGE;
-        return NULL;
-    }
-
-    return mm;
-}
-
 static mongo_message *mongo_cursor_message_create( mongo_cursor *cursor, size_t len , int id , int responseTo , int op ) {
     mongo_message *mm = mongo_message_create( len , id , responseTo , op );
     
