@@ -321,17 +321,6 @@ static mongo_message *mongo_message_create( size_t len , int id , int responseTo
     return mm;
 }
 
-static mongo_message *mongo_cursor_message_create( mongo_cursor *cursor, size_t len , int id , int responseTo , int op ) {
-    mongo_message *mm = mongo_message_create( len , id , responseTo , op );
-    
-    if ( mm == NULL) {
-        cursor->err = MONGO_CURSOR_OVERFLOW;
-        return NULL;
-    }
-    
-    return mm;
-}
-
 /* Always calls bson_free(mm) */
 static int mongo_message_send( mongo *conn, mongo_message *mm ) {
     mongo_header head; /* little endian */
@@ -1209,7 +1198,7 @@ static int mongo_cursor_op_query( mongo_cursor *cursor ) {
     else if( mongo_cursor_bson_valid( cursor, cursor->fields ) != MONGO_OK )
         return MONGO_ERROR;
 
-    mm = mongo_cursor_message_create( cursor, 16 + /* header */
+    mm = mongo_message_create( 16 + /* header */
                                4 + /*  options */
                                strlen( cursor->ns ) + 1 + /* ns */
                                4 + 4 + /* skip,return */
@@ -1217,6 +1206,7 @@ static int mongo_cursor_op_query( mongo_cursor *cursor ) {
                                bson_size( cursor->fields ) ,
                                0 , 0 , MONGO_OP_QUERY );
     if( mm == NULL ) {
+        cursor->err = MONGO_CURSOR_OVERFLOW;
         return MONGO_ERROR;
     }
 
@@ -1279,13 +1269,14 @@ static int mongo_cursor_get_more( mongo_cursor *cursor ) {
         if( cursor->limit > 0 )
             limit = cursor->limit - cursor->seen;
 
-        mm = mongo_cursor_message_create( cursor, 16 /*header*/
+        mm = mongo_message_create( 16 /*header*/
                                    +4 /*ZERO*/
                                    +sl
                                    +4 /*numToReturn*/
                                    +8 /*cursorID*/
                                    , 0, 0, MONGO_OP_GET_MORE );
         if( mm == NULL ) {
+            cursor->err = MONGO_CURSOR_OVERFLOW;
             return MONGO_ERROR;
         }
 
@@ -1464,12 +1455,13 @@ MONGO_EXPORT int mongo_cursor_destroy( mongo_cursor *cursor ) {
     /* Kill cursor if live. */
     if ( cursor->reply && cursor->reply->fields.cursorID ) {
         mongo *conn = cursor->conn;
-        mongo_message *mm = mongo_cursor_message_create( cursor, 16 /*header*/
+        mongo_message *mm = mongo_message_create( 16 /*header*/
                             +4 /*ZERO*/
                             +4 /*numCursors*/
                             +8 /*cursorID*/
                             , 0, 0, MONGO_OP_KILL_CURSORS );
         if( mm == NULL ) {
+            cursor->err = MONGO_CURSOR_OVERFLOW;
             return MONGO_ERROR;
         }
         data = &mm->data;
