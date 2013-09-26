@@ -2027,10 +2027,6 @@ MONGO_EXPORT bson_bool_t mongo_cmd_authenticate( mongo *conn, const char *db, co
         return MONGO_ERROR;
     }
 
-    if( strlen( nonce ) >= INT32_MAX || strlen( user ) >= INT32_MAX ) {
-        conn->err = MONGO_BSON_TOO_LARGE;
-        return MONGO_ERROR;
-    }
     mongo_md5_init( &st );
     mongo_md5_append( &st, ( const mongo_md5_byte_t * )nonce, ( int )strlen( nonce ) );
     mongo_md5_append( &st, ( const mongo_md5_byte_t * )user, ( int )strlen( user ) );
