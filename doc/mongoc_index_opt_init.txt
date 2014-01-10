@@ -1,0 +1,1 @@
+mongoc_index_opt_get_default.txt
