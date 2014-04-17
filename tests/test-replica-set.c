@@ -1,5 +1,6 @@
+#include "mongoc-tests.h"
+
 #include <string.h>
-#include <unistd.h>
 
 #include "ha-test.h"
 
@@ -8,7 +9,6 @@
 #include "mongoc-cluster-private.h"
 #include "mongoc-cursor.h"
 #include "mongoc-cursor-private.h"
-#include "mongoc-tests.h"
 #include "mongoc-write-concern-private.h"
 
 #undef G_LOG_DOMAIN
@@ -74,7 +74,7 @@ get_replica (mongoc_cluster_node_t *node)
       }
    }
 
-   BSON_ASSERT(FALSE);
+   BSON_ASSERT(false);
 
    return NULL;
 }
@@ -110,7 +110,7 @@ test1 (void)
    mongoc_client_t *client;
    const bson_t *doc;
    bson_error_t error;
-   bson_bool_t r;
+   bool r;
    ha_node_t *replica;
    bson_t q;
    int i;
@@ -130,8 +130,8 @@ test1 (void)
    cursor = mongoc_collection_find(collection,
                                    MONGOC_QUERY_NONE,
                                    0,
-                                   100,
                                    0,
+                                   100,
                                    &q,
                                    NULL,
                                    read_prefs);
@@ -227,7 +227,7 @@ test2 (void)
    mongoc_client_t *client;
    const bson_t *doc;
    bson_error_t error;
-   bson_bool_t r;
+   bool r;
    bson_t q;
 
    bson_init(&q);
@@ -294,6 +294,8 @@ int
 main (int   argc,   /* IN */
       char *argv[]) /* IN */
 {
+   mongoc_init();
+
    replica_set = ha_replica_set_new("repltest1");
    r1 = ha_replica_set_add_replica(replica_set, "replica1");
    r2 = ha_replica_set_add_replica(replica_set, "replica2");
@@ -312,6 +314,8 @@ main (int   argc,   /* IN */
 
    ha_replica_set_shutdown(replica_set);
    ha_replica_set_destroy(replica_set);
+
+   mongoc_cleanup();
 
    return 0;
 }

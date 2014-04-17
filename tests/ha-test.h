@@ -1,5 +1,5 @@
 /*
- * Copyright 2013 10gen Inc.
+ * Copyright 2013 MongoDB, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,6 +21,7 @@
 
 #include <bson.h>
 #include <mongoc.h>
+#include <mongoc-thread-private.h>
 
 
 BSON_BEGIN_DECLS
@@ -56,6 +57,16 @@ struct _ha_replica_set_t
 #endif
 };
 
+#ifdef BSON_OS_WIN32
+typedef struct {
+   bool is_alive;
+   HANDLE proc;
+   HANDLE thread;
+} bson_ha_pid_t;
+#else
+typedef pid_t bson_ha_pid_t;
+#endif
+
 
 struct _ha_node_t
 {
@@ -64,11 +75,11 @@ struct _ha_node_t
    char             *repl_set;
    char             *dbpath;
    char             *configopt;
-   bson_bool_t       is_arbiter : 1;
-   bson_bool_t       is_config  : 1;
-   bson_bool_t       is_router  : 1;
-   pid_t             pid;
-   bson_uint16_t     port;
+   bool       is_arbiter : 1;
+   bool       is_config  : 1;
+   bool       is_router  : 1;
+   bson_ha_pid_t     pid;
+   uint16_t     port;
 
 #ifdef MONGOC_ENABLE_SSL
    mongoc_ssl_opt_t *ssl_opt;

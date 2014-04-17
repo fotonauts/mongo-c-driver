@@ -1,6 +1,7 @@
+#include "mongoc-tests.h"
+
 #include <mongoc.h>
 
-#include "mongoc-tests.h"
 #include "ha-test.h"
 
 static ha_sharded_cluster_t *cluster;
@@ -19,7 +20,7 @@ test1 (void)
    mongoc_collection_t *collection;
    mongoc_client_t *client;
    bson_error_t error = { 0 };
-   bson_bool_t r;
+   bool r;
    bson_t q = BSON_INITIALIZER;
    int i;
 
@@ -50,6 +51,8 @@ int
 main (int argc,
       char *argv[])
 {
+   mongoc_init();
+
    repl_1 = ha_replica_set_new("shardtest1");
    node_1_1 = ha_replica_set_add_replica(repl_1, "shardtest1_1");
    node_1_2 = ha_replica_set_add_replica(repl_1, "shardtest1_2");
@@ -73,6 +76,8 @@ main (int argc,
    run_test("/ShardedCluster/basic", test1);
 
    ha_sharded_cluster_shutdown(cluster);
+
+   mongoc_cleanup();
 
    return 0;
 }

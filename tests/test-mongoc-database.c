@@ -1,12 +1,8 @@
 #include <mongoc.h>
-#include <mongoc-client-private.h>
-#include <mongoc-log.h>
 
+#include "TestSuite.h"
+#include "test-libmongoc.h"
 #include "mongoc-tests.h"
-
-
-#define HOST (getenv("MONGOC_TEST_HOST") ? getenv("MONGOC_TEST_HOST") : "localhost")
-
 
 static char *gTestUri;
 
@@ -18,7 +14,7 @@ test_has_collection (void)
    mongoc_database_t *database;
    mongoc_client_t *client;
    bson_error_t error;
-   bson_bool_t r;
+   bool r;
    bson_oid_t oid;
    bson_t b;
 
@@ -61,7 +57,7 @@ test_command (void)
    mongoc_cursor_t *cursor;
    bson_error_t error;
    const bson_t *doc;
-   bson_bool_t r;
+   bool r;
    bson_t cmd = BSON_INITIALIZER;
    bson_t reply;
 
@@ -113,7 +109,7 @@ test_drop (void)
    mongoc_database_t *database;
    mongoc_client_t *client;
    bson_error_t error = { 0 };
-   bson_bool_t r;
+   bool r;
 
    client = mongoc_client_new (gTestUri);
    assert (client);
@@ -131,30 +127,61 @@ test_drop (void)
 
 
 static void
-log_handler (mongoc_log_level_t  log_level,
-             const char         *domain,
-             const char         *message,
-             void               *user_data)
+test_create_collection (void)
 {
-   /* Do Nothing */
+   mongoc_database_t *database;
+   mongoc_collection_t *collection;
+   mongoc_client_t *client;
+   bson_error_t error = { 0 };
+   bson_t options;
+   char *name;
+   bool r;
+
+   client = mongoc_client_new (gTestUri);
+   assert (client);
+
+   database = mongoc_client_get_database (client, "test");
+   assert (database);
+
+   bson_init (&options);
+   BSON_APPEND_INT32 (&options, "size", 1234);
+   BSON_APPEND_INT32 (&options, "max", 4567);
+   BSON_APPEND_BOOL (&options, "capped", true);
+   BSON_APPEND_BOOL (&options, "autoIndexId", true);
+
+   name = gen_collection_name ("create_collection");
+   collection = mongoc_database_create_collection (database, name, &options, &error);
+   assert (collection);
+   bson_free (name);
+
+   r = mongoc_collection_drop (collection, &error);
+   assert (r);
+
+   r = mongoc_database_drop (database, &error);
+   assert (r);
+
+   mongoc_collection_destroy (collection);
+   mongoc_database_destroy (database);
+   mongoc_client_destroy (client);
 }
 
 
-int
-main (int   argc,
-      char *argv[])
+static void
+cleanup_globals (void)
 {
-   if (argc <= 1 || !!strcmp(argv[1], "-v")) {
-      mongoc_log_set_handler(log_handler, NULL);
-   }
+   bson_free (gTestUri);
+}
 
-   gTestUri = bson_strdup_printf("mongodb://%s/", HOST);
 
-   run_test("/mongoc/database/has_collection", test_has_collection);
-   run_test("/mongoc/database/command", test_command);
-   run_test("/mongoc/database/drop", test_drop);
+void
+test_database_install (TestSuite *suite)
+{
+   gTestUri = bson_strdup_printf ("mongodb://%s/", MONGOC_TEST_HOST);
 
-   bson_free(gTestUri);
+   TestSuite_Add (suite, "/Database/has_collection", test_has_collection);
+   TestSuite_Add (suite, "/Database/command", test_command);
+   TestSuite_Add (suite, "/Database/drop", test_drop);
+   TestSuite_Add (suite, "/Database/create_collection", test_create_collection);
 
-   return 0;
+   atexit (cleanup_globals);
 }

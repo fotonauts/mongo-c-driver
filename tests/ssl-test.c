@@ -1,13 +1,13 @@
-#include <fcntl.h>
-#include <unistd.h>
-#include <arpa/inet.h>
 #include <bson.h>
+#include <errno.h>
 #include <openssl/ssl.h>
 #include <openssl/err.h>
 
+#include <mongoc-thread-private.h>
+
 #include "ssl-test.h"
 
-#define TIMEOUT 100
+#define TIMEOUT 1000
 
 #define LOCALHOST "127.0.0.1"
 
@@ -17,8 +17,8 @@ typedef struct ssl_test_data
    mongoc_ssl_opt_t  *server;
    const char        *host;
    unsigned short     server_port;
-   bson_cond_t        cond;
-   bson_mutex_t       cond_mutex;
+   mongoc_cond_t      cond;
+   mongoc_mutex_t     cond_mutex;
    ssl_test_result_t *client_result;
    ssl_test_result_t *server_result;
 } ssl_test_data_t;
@@ -42,81 +42,89 @@ ssl_test_server (void * ptr)
 
    mongoc_stream_t *sock_stream;
    mongoc_stream_t *ssl_stream;
-   int conn_fd;
-   int listen_fd;
+   mongoc_socket_t *listen_sock;
+   mongoc_socket_t *conn_sock;
    socklen_t sock_len;
    char buf[1024];
    ssize_t r;
-   struct iovec iov = { buf, sizeof(buf) };
+   mongoc_iovec_t iov;
    struct sockaddr_in server_addr = { 0 };
+   int len;
 
-   listen_fd = socket(AF_INET, SOCK_STREAM, 0);
-   assert(listen_fd > 0);
+   iov.iov_base = buf;
+   iov.iov_len = sizeof buf;
+
+   listen_sock = mongoc_socket_new (AF_INET, SOCK_STREAM, 0);
+   assert (listen_sock);
 
    server_addr.sin_family = AF_INET;
-   server_addr.sin_addr.s_addr = htonl(INADDR_ANY);
-   server_addr.sin_port = htons(0);
+   server_addr.sin_addr.s_addr = htonl (INADDR_ANY);
+   server_addr.sin_port = htons (0);
 
-   r = bind(listen_fd, (struct sockaddr *)&server_addr, sizeof(server_addr));
-   assert(r == 0);
+   r = mongoc_socket_bind (listen_sock,
+                           (struct sockaddr *)&server_addr,
+                           sizeof server_addr);
+   assert (r == 0);
 
    sock_len = sizeof(server_addr);
-   r = getsockname(listen_fd, (struct sockaddr *)&server_addr, &sock_len);
+   r = mongoc_socket_getsockname (listen_sock, (struct sockaddr *)&server_addr, &sock_len);
    assert(r == 0);
 
-   r = listen(listen_fd, 10);
+   r = mongoc_socket_listen (listen_sock, 10);
    assert(r == 0);
 
-   bson_mutex_lock(&data->cond_mutex);
+   mongoc_mutex_lock(&data->cond_mutex);
    data->server_port = ntohs(server_addr.sin_port);
-   bson_cond_signal(&data->cond);
-   bson_mutex_unlock(&data->cond_mutex);
+   mongoc_cond_signal(&data->cond);
+   mongoc_mutex_unlock(&data->cond_mutex);
 
-   conn_fd = accept(listen_fd, (struct sockaddr*)NULL, NULL);
-   assert(conn_fd > 0);
+   conn_sock = mongoc_socket_accept (listen_sock, -1);
+   assert (conn_sock);
 
-   sock_stream = mongoc_stream_unix_new(conn_fd);
-   assert(sock_stream);
+   sock_stream = mongoc_stream_socket_new (conn_sock);
+   assert (sock_stream);
    ssl_stream = mongoc_stream_tls_new(sock_stream, data->server, 0);
-   if (! ssl_stream) {
+   if (!ssl_stream) {
       unsigned long err = ERR_get_error();
       assert(err);
 
       data->server_result->ssl_err = err;
       data->server_result->result = SSL_TEST_SSL_INIT;
 
-      mongoc_stream_destroy(sock_stream);
-
-      close(listen_fd);
+      mongoc_stream_destroy (sock_stream);
+      mongoc_socket_destroy (listen_sock);
 
       return NULL;
    }
    assert(ssl_stream);
 
    r = mongoc_stream_tls_do_handshake (ssl_stream, TIMEOUT);
-   if (! r) {
+   if (!r) {
       unsigned long err = ERR_get_error();
       assert(err);
 
       data->server_result->ssl_err = err;
       data->server_result->result = SSL_TEST_SSL_HANDSHAKE;
 
+      mongoc_socket_destroy (listen_sock);
       mongoc_stream_destroy(ssl_stream);
-      close(listen_fd);
 
       return NULL;
    }
-
-   int len;
+   
    r = mongoc_stream_readv(ssl_stream, &iov, 1, 4, TIMEOUT);
    if (r < 0) {
+#ifdef _WIN32
+      assert(errno == WSAETIMEDOUT);
+#else
       assert(errno == ETIMEDOUT);
+#endif
 
       data->server_result->err = errno;
       data->server_result->result = SSL_TEST_TIMEOUT;
 
       mongoc_stream_destroy(ssl_stream);
-      close(listen_fd);
+      mongoc_socket_destroy (listen_sock);
 
       return NULL;
    }
@@ -132,7 +140,7 @@ ssl_test_server (void * ptr)
 
    mongoc_stream_destroy(ssl_stream);
 
-   close(listen_fd);
+   mongoc_socket_destroy (listen_sock);
 
    data->server_result->result = SSL_TEST_SUCCESS;
 
@@ -157,31 +165,35 @@ ssl_test_client (void * ptr)
    ssl_test_data_t *data = (ssl_test_data_t *)ptr;
    mongoc_stream_t *sock_stream;
    mongoc_stream_t *ssl_stream;
-   int conn_fd;
+   mongoc_socket_t *conn_sock;
    char buf[1024];
    ssize_t r;
-   struct iovec riov = { buf, sizeof(buf) };
-   struct iovec wiov = { 0 };
+   mongoc_iovec_t riov;
+   mongoc_iovec_t wiov;
    struct sockaddr_in server_addr = { 0 };
+   int len;
 
-   conn_fd = socket(AF_INET, SOCK_STREAM, 0);
-   assert(conn_fd != 0);
+   riov.iov_base = buf;
+   riov.iov_len = sizeof buf;
 
-   bson_mutex_lock(&data->cond_mutex);
+   conn_sock = mongoc_socket_new (AF_INET, SOCK_STREAM, 0);
+   assert (conn_sock);
+
+   mongoc_mutex_lock(&data->cond_mutex);
    while (! data->server_port) {
-      bson_cond_wait(&data->cond, &data->cond_mutex);
+      mongoc_cond_wait(&data->cond, &data->cond_mutex);
    }
-   bson_mutex_unlock(&data->cond_mutex);
+   mongoc_mutex_unlock(&data->cond_mutex);
 
    server_addr.sin_family = AF_INET;
    server_addr.sin_port = htons(data->server_port);
    r = inet_pton(AF_INET, LOCALHOST, &server_addr.sin_addr);
    assert (r > 0);
 
-   r = connect(conn_fd, (struct sockaddr *)&server_addr, sizeof(server_addr));
+   r = mongoc_socket_connect (conn_sock, (struct sockaddr *)&server_addr, sizeof(server_addr), -1);
    assert (r == 0);
 
-   sock_stream = mongoc_stream_unix_new(conn_fd);
+   sock_stream = mongoc_stream_socket_new (conn_sock);
    assert(sock_stream);
    ssl_stream = mongoc_stream_tls_new(sock_stream, data->client, 1);
    if (! ssl_stream) {
@@ -197,6 +209,7 @@ ssl_test_client (void * ptr)
    }
    assert(ssl_stream);
 
+   errno = 0;
    r = mongoc_stream_tls_do_handshake (ssl_stream, TIMEOUT);
    if (! r) {
       unsigned long err = ERR_get_error();
@@ -222,9 +235,9 @@ ssl_test_client (void * ptr)
       return NULL;
    }
 
-   int len = 4;
+   len = 4;
 
-   wiov.iov_base = &len;
+   wiov.iov_base = (void *)&len;
    wiov.iov_len = 4;
    r = mongoc_stream_writev(ssl_stream, &wiov, 1, TIMEOUT);
 
@@ -235,9 +248,17 @@ ssl_test_client (void * ptr)
    r = mongoc_stream_writev(ssl_stream, &wiov, 1, TIMEOUT);
    assert(r == wiov.iov_len);
 
-   r = mongoc_stream_readv(ssl_stream, &riov, 1, 4, TIMEOUT);
-   assert(r == wiov.iov_len);
-   assert(strcmp(riov.iov_base, wiov.iov_base) == 0);
+   riov.iov_len = 1;
+
+   r = mongoc_stream_readv(ssl_stream, &riov, 1, 1, TIMEOUT);
+   assert(r == 1);
+   assert(memcmp(riov.iov_base, "f", 1) == 0);
+
+   riov.iov_len = 3;
+
+   r = mongoc_stream_readv(ssl_stream, &riov, 1, 3, TIMEOUT);
+   assert(r == 3);
+   assert(memcmp(riov.iov_base, "oo", 3) == 0);
 
    mongoc_stream_destroy(ssl_stream);
 
@@ -262,7 +283,7 @@ ssl_test (mongoc_ssl_opt_t  *client,
           ssl_test_result_t *server_result)
 {
    ssl_test_data_t data = { 0 };
-   bson_thread_t threads[2];
+   mongoc_thread_t threads[2];
    int i, r;
 
    data.server = server;
@@ -271,20 +292,20 @@ ssl_test (mongoc_ssl_opt_t  *client,
    data.server_result = server_result;
    data.host = host;
 
-   bson_mutex_init(&data.cond_mutex, NULL);
-   bson_cond_init(&data.cond, NULL);
+   mongoc_mutex_init(&data.cond_mutex);
+   mongoc_cond_init(&data.cond);
 
-   r = bson_thread_create(threads, NULL, &ssl_test_server, &data);
+   r = mongoc_thread_create(threads, &ssl_test_server, &data);
    assert(r == 0);
 
-   r = bson_thread_create(threads + 1, NULL, &ssl_test_client, &data);
+   r = mongoc_thread_create(threads + 1, &ssl_test_client, &data);
    assert(r == 0);
 
    for (i = 0; i < 2; i++) {
-      r = bson_thread_join(threads[i], NULL);
+      r = mongoc_thread_join(threads[i]);
       assert(r == 0);
    }
 
-   bson_mutex_destroy(&data.cond_mutex);
-   bson_cond_destroy(&data.cond);
+   mongoc_mutex_destroy(&data.cond_mutex);
+   mongoc_cond_destroy(&data.cond);
 }

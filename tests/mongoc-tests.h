@@ -1,5 +1,5 @@
 /*
- * Copyright 2013 10gen Inc.
+ * Copyright 2013 MongoDB, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,13 +19,33 @@
 #define MONGOC_TESTS_H
 
 
+#ifdef BSON_DISABLE_ASSERT
+# undef BSON_DISABLE_ASSERT
+#endif
+
+
+#ifdef BSON_DISABLE_CHECKS
+# undef BSON_DISABLE_CHECKS
+#endif
+
+
 #include <assert.h>
 #include <bson.h>
 #include <stdio.h>
 #include <time.h>
+#ifdef _WIN32
+# include <process.h>
+#endif
 
 
 BSON_BEGIN_DECLS
+
+
+#ifdef _WIN32
+# define gettestpid _getpid
+#else
+# define gettestpid getpid
+#endif
 
 
 #define assert_cmpstr(a, b)                                             \
@@ -50,38 +70,24 @@ BSON_BEGIN_DECLS
    } while (0)
 
 
-static char *TEST_RESULT;
+#if (__GNUC__ > 4) || (__GNUC__ == 4 && __GNUC_MINOR__ >= 6)
+# define BEGIN_IGNORE_DEPRECATIONS \
+   _Pragma ("GCC diagnostic push") \
+   _Pragma ("GCC diagnostic ignored \"-Wdeprecated-declarations\"")
+# define END_IGNORE_DEPRECATIONS \
+   _Pragma ("GCC diagnostic pop")
+#else
+# define BEGIN_IGNORE_DEPRECATIONS
+# define END_IGNORE_DEPRECATIONS
+#endif
 
 
-static void
+extern char *TEST_RESULT;
+
+
+void
 run_test (const char *name,
-          void (*func) (void))
-{
-   struct timeval begin;
-   struct timeval end;
-   struct timeval diff;
-   bson_int64_t usec;
-   double format;
-
-   TEST_RESULT = "PASS";
-
-   fprintf(stdout, "%-42s : ", name);
-   fflush(stdout);
-   gettimeofday(&begin, NULL);
-   func();
-   gettimeofday(&end, NULL);
-   fprintf(stdout, TEST_RESULT);
-
-   diff.tv_sec = end.tv_sec - begin.tv_sec;
-   diff.tv_usec = usec = end.tv_usec - begin.tv_usec;
-   if (usec < 0) {
-      diff.tv_sec -= 1;
-      diff.tv_usec = usec + 1000000;
-   }
-
-   format = diff.tv_sec + (diff.tv_usec / 1000000.0);
-   fprintf(stdout, " : %lf\n", format);
-}
+          void (*func) (void));
 
 
 BSON_END_DECLS

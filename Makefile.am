@@ -1,35 +1,39 @@
 EXTRA_DIST =
+CLEANFILES =
+DISTCLEANFILES =
+
+bin_PROGRAMS =
+lib_LTLIBRARIES =
+noinst_LTLIBRARIES =
 noinst_PROGRAMS =
 
-include mongoc/Makefile.include
-include examples/Makefile.include
-include tests/Makefile.include
-include tools/Makefile.include
-include doc/Makefile.include
-
-if HAVE_PYTHON
-include bindings/python/Makefile.include
+if WITH_LIBBSON
+SUBDIRS = src/libbson
 endif
-
-ACLOCAL_AMFLAGS = -I m4 ${ACLOCAL_FLAGS}
-DISTCHECK_CONFIGURE_FLAGS = --enable-silent-rules
 
 AM_CTAGSFLAGS = --fields=+l --languages=c
 
+include doc/Makefile.am
+include examples/Makefile.am
+include src/Makefile.am
+include tests/Makefile.am
+
+# for EXTRA_DIST
+include build/cmake/Makefile.am
+
+ACLOCAL_AMFLAGS = -I build/autotools/m4 ${ACLOCAL_FLAGS}
+DISTCHECK_CONFIGURE_FLAGS = --enable-silent-rules
+
 mongocdocdir = ${docdir}
-mongocdoc_DATA =
-mongocdoc_DATA += COPYING
-mongocdoc_DATA += NEWS
-mongocdoc_DATA += README
-
-pkgconfigdir = $(libdir)/pkgconfig
-pkgconfig_DATA =
-pkgconfig_DATA += $(top_builddir)/mongoc/libmongoc-1.0.pc
-if HAVE_SSL
-pkgconfig_DATA += $(top_builddir)/mongoc/libmongoc-ssl-1.0.pc
-endif
-
+mongocdoc_DATA = \
+	COPYING \
+	NEWS \
+	README.rst
 EXTRA_DIST += $(mongocdoc_DATA)
+
+EXTRA_DIST += \
+	CMakeLists.txt \
+	CONTRIBUTING.md
 
 dist-hook:
 	@if test -d "$(srcdir)/.git"; then                              \

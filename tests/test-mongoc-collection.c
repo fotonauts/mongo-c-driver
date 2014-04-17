@@ -1,39 +1,63 @@
+#include <bcon.h>
 #include <mongoc.h>
-#include <mongoc-client-private.h>
-#include <mongoc-cursor-private.h>
-#include <mongoc-log.h>
 
+#include "TestSuite.h"
+
+#include "test-libmongoc.h"
 #include "mongoc-tests.h"
 
-
-#define HOST (getenv("MONGOC_TEST_HOST") ? getenv("MONGOC_TEST_HOST") : "localhost")
-
-
 static char *gTestUri;
+
+
+static mongoc_database_t *
+get_test_database (mongoc_client_t *client)
+{
+   return mongoc_client_get_database (client, "test");
+}
+
+
+static mongoc_collection_t *
+get_test_collection (mongoc_client_t *client,
+                     const char      *prefix)
+{
+   mongoc_collection_t *ret;
+   char *str;
+
+   str = gen_collection_name (prefix);
+   ret = mongoc_client_get_collection (client, "test", str);
+   bson_free (str);
+
+   return ret;
+}
 
 
 static void
 test_insert (void)
 {
+   mongoc_database_t *database;
    mongoc_collection_t *collection;
    mongoc_client_t *client;
    bson_context_t *context;
    bson_error_t error;
-   bson_bool_t r;
+   bool r;
    bson_oid_t oid;
    unsigned i;
    bson_t b;
 
-   client = mongoc_client_new(gTestUri);
-   assert(client);
 
-   collection = mongoc_client_get_collection(client, "test", "test");
-   assert(collection);
+   client = mongoc_client_new(gTestUri);
+   ASSERT (client);
+
+   database = get_test_database (client);
+   ASSERT (database);
+
+   collection = get_test_collection (client, "test_insert");
+   ASSERT (collection);
 
    mongoc_collection_drop(collection, &error);
 
    context = bson_context_new(BSON_CONTEXT_NONE);
-   assert(context);
+   ASSERT (context);
 
    for (i = 0; i < 10; i++) {
       bson_init(&b);
@@ -45,11 +69,24 @@ test_insert (void)
       if (!r) {
          MONGOC_WARNING("%s\n", error.message);
       }
-      assert(r);
+      ASSERT (r);
       bson_destroy(&b);
    }
 
+   bson_init (&b);
+   BSON_APPEND_INT32 (&b, "$hello", 1);
+   r = mongoc_collection_insert (collection, MONGOC_INSERT_NONE, &b, NULL,
+                                 &error);
+   ASSERT (!r);
+   ASSERT (error.domain == MONGOC_ERROR_BSON);
+   ASSERT (error.code == MONGOC_ERROR_BSON_INVALID);
+   bson_destroy (&b);
+
+   r = mongoc_collection_drop (collection, &error);
+   ASSERT (r);
+
    mongoc_collection_destroy(collection);
+   mongoc_database_destroy(database);
    bson_context_destroy(context);
    mongoc_client_destroy(client);
 }
@@ -59,27 +96,31 @@ static void
 test_insert_bulk (void)
 {
    mongoc_collection_t *collection;
+   mongoc_database_t *database;
    mongoc_client_t *client;
    bson_context_t *context;
    bson_error_t error;
-   bson_bool_t r;
+   bool r;
    bson_oid_t oid;
    unsigned i;
    bson_t q;
    bson_t b[10];
    bson_t *bptr[10];
-   bson_int64_t count;
+   int64_t count;
 
    client = mongoc_client_new(gTestUri);
-   assert(client);
+   ASSERT (client);
 
-   collection = mongoc_client_get_collection(client, "test", "test");
-   assert(collection);
+   database = get_test_database (client);
+   ASSERT (database);
+
+   collection = get_test_collection (client, "test_insert_bulk");
+   ASSERT (collection);
 
    mongoc_collection_drop(collection, &error);
 
    context = bson_context_new(BSON_CONTEXT_NONE);
-   assert(context);
+   ASSERT (context);
 
    bson_init(&q);
    bson_append_int32(&q, "n", -1, 0);
@@ -92,16 +133,18 @@ test_insert_bulk (void)
       bptr[i] = &b[i];
    }
 
+   BEGIN_IGNORE_DEPRECATIONS;
    r = mongoc_collection_insert_bulk (collection, MONGOC_INSERT_NONE,
-                                     (const bson_t **)bptr, 10, NULL, &error);
+                                      (const bson_t **)bptr, 10, NULL, &error);
+   END_IGNORE_DEPRECATIONS;
 
    if (!r) {
       MONGOC_WARNING("%s\n", error.message);
    }
-   assert(r);
+   ASSERT (r);
 
    count = mongoc_collection_count (collection, MONGOC_QUERY_NONE, &q, 0, 0, NULL, &error);
-   assert(count == 5);
+   ASSERT (count == 5);
 
    for (i = 8; i < 10; i++) {
       bson_destroy(&b[i]);
@@ -112,29 +155,89 @@ test_insert_bulk (void)
       bptr[i] = &b[i];
    }
 
+   BEGIN_IGNORE_DEPRECATIONS;
    r = mongoc_collection_insert_bulk (collection, MONGOC_INSERT_NONE,
                                      (const bson_t **)bptr, 10, NULL, &error);
+   END_IGNORE_DEPRECATIONS;
 
-   assert(!r);
-   assert(error.code == 11000);
+   ASSERT (!r);
+   ASSERT (error.code == 11000);
 
    count = mongoc_collection_count (collection, MONGOC_QUERY_NONE, &q, 0, 0, NULL, &error);
-   assert(count == 5);
+   ASSERT (count == 5);
 
+   BEGIN_IGNORE_DEPRECATIONS;
    r = mongoc_collection_insert_bulk (collection, MONGOC_INSERT_CONTINUE_ON_ERROR,
                                      (const bson_t **)bptr, 10, NULL, &error);
-   assert(!r);
-   assert(error.code == 11000);
+   END_IGNORE_DEPRECATIONS;
+   ASSERT (!r);
+   ASSERT (error.code == 11000);
 
    count = mongoc_collection_count (collection, MONGOC_QUERY_NONE, &q, 0, 0, NULL, &error);
-   assert(count == 6);
+   ASSERT (count == 6);
 
    bson_destroy(&q);
    for (i = 0; i < 10; i++) {
       bson_destroy(&b[i]);
    }
 
+   r = mongoc_collection_drop (collection, &error);
+   ASSERT (r);
+
    mongoc_collection_destroy(collection);
+   mongoc_database_destroy(database);
+   bson_context_destroy(context);
+   mongoc_client_destroy(client);
+}
+
+
+static void
+test_save (void)
+{
+   mongoc_collection_t *collection;
+   mongoc_database_t *database;
+   mongoc_client_t *client;
+   bson_context_t *context;
+   bson_error_t error;
+   bool r;
+   bson_oid_t oid;
+   unsigned i;
+   bson_t b;
+
+   client = mongoc_client_new(gTestUri);
+   ASSERT (client);
+
+   database = get_test_database (client);
+   ASSERT (database);
+
+   collection = get_test_collection (client, "test_save");
+   ASSERT (collection);
+
+   mongoc_collection_drop (collection, &error);
+
+   context = bson_context_new(BSON_CONTEXT_NONE);
+   ASSERT (context);
+
+   for (i = 0; i < 10; i++) {
+      bson_init(&b);
+      bson_oid_init(&oid, context);
+      bson_append_oid(&b, "_id", 3, &oid);
+      bson_append_utf8(&b, "hello", 5, "/world", 5);
+      r = mongoc_collection_save(collection, &b, NULL, &error);
+      if (!r) {
+         MONGOC_WARNING("%s\n", error.message);
+      }
+      ASSERT (r);
+      bson_destroy(&b);
+   }
+
+   bson_destroy (&b);
+
+   r = mongoc_collection_drop (collection, &error);
+   ASSERT (r);
+
+   mongoc_collection_destroy(collection);
+   mongoc_database_destroy(database);
    bson_context_destroy(context);
    mongoc_client_destroy(client);
 }
@@ -144,18 +247,32 @@ static void
 test_regex (void)
 {
    mongoc_collection_t *collection;
+   mongoc_database_t *database;
+   mongoc_write_concern_t *wr;
    mongoc_client_t *client;
    bson_error_t error = { 0 };
-   bson_int64_t count;
+   int64_t count;
    bson_t q = BSON_INITIALIZER;
+   bson_t *doc;
+   bool r;
 
    client = mongoc_client_new (gTestUri);
-   assert (client);
+   ASSERT (client);
 
-   collection = mongoc_client_get_collection (client, "test", "test");
-   assert (collection);
+   database = get_test_database (client);
+   ASSERT (database);
 
-   bson_append_regex (&q, "hello", -1, "^/wo", NULL);
+   collection = get_test_collection (client, "test_regex");
+   ASSERT (collection);
+
+   wr = mongoc_write_concern_new ();
+   mongoc_write_concern_set_journal (wr, true);
+
+   doc = BCON_NEW ("hello", "/world");
+   r = mongoc_collection_insert (collection, MONGOC_INSERT_NONE, doc, wr, &error);
+   ASSERT (r);
+
+   BSON_APPEND_REGEX (&q, "hello", "^/wo", "i");
 
    count = mongoc_collection_count (collection,
                                     MONGOC_QUERY_NONE,
@@ -165,11 +282,18 @@ test_regex (void)
                                     NULL,
                                     &error);
 
-   assert (count > 0);
-   assert (!error.domain);
+   ASSERT (count > 0);
+   ASSERT (!error.domain);
+
+   r = mongoc_collection_drop (collection, &error);
+   ASSERT (r);
+
+   mongoc_write_concern_destroy (wr);
 
    bson_destroy (&q);
+   bson_destroy (doc);
    mongoc_collection_destroy (collection);
+   mongoc_database_destroy(database);
    mongoc_client_destroy (client);
 }
 
@@ -178,10 +302,11 @@ static void
 test_update (void)
 {
    mongoc_collection_t *collection;
+   mongoc_database_t *database;
    mongoc_client_t *client;
    bson_context_t *context;
    bson_error_t error;
-   bson_bool_t r;
+   bool r;
    bson_oid_t oid;
    unsigned i;
    bson_t b;
@@ -190,13 +315,16 @@ test_update (void)
    bson_t set;
 
    client = mongoc_client_new(gTestUri);
-   assert(client);
+   ASSERT (client);
 
-   collection = mongoc_client_get_collection(client, "test", "test");
-   assert(collection);
+   database = get_test_database (client);
+   ASSERT (database);
+
+   collection = get_test_collection (client, "test_update");
+   ASSERT (collection);
 
    context = bson_context_new(BSON_CONTEXT_NONE);
-   assert(context);
+   ASSERT (context);
 
    for (i = 0; i < 10; i++) {
       bson_init(&b);
@@ -211,7 +339,7 @@ test_update (void)
       if (!r) {
          MONGOC_WARNING("%s\n", error.message);
       }
-      assert(r);
+      ASSERT (r);
 
       bson_init(&q);
       bson_append_oid(&q, "_id", 3, &oid);
@@ -225,14 +353,39 @@ test_update (void)
       if (!r) {
          MONGOC_WARNING("%s\n", error.message);
       }
-      assert(r);
+      ASSERT (r);
 
       bson_destroy(&b);
       bson_destroy(&q);
       bson_destroy(&u);
    }
 
+   bson_init(&q);
+   bson_init(&u);
+   BSON_APPEND_INT32 (&u, "abcd", 1);
+   BSON_APPEND_INT32 (&u, "$hi", 1);
+   r = mongoc_collection_update(collection, MONGOC_UPDATE_NONE, &q, &u, NULL, &error);
+   ASSERT (!r);
+   ASSERT (error.domain == MONGOC_ERROR_BSON);
+   ASSERT (error.code == MONGOC_ERROR_BSON_INVALID);
+   bson_destroy(&q);
+   bson_destroy(&u);
+
+   bson_init(&q);
+   bson_init(&u);
+   BSON_APPEND_INT32 (&u, "a.b.c.d", 1);
+   r = mongoc_collection_update(collection, MONGOC_UPDATE_NONE, &q, &u, NULL, &error);
+   ASSERT (!r);
+   ASSERT (error.domain == MONGOC_ERROR_BSON);
+   ASSERT (error.code == MONGOC_ERROR_BSON_INVALID);
+   bson_destroy(&q);
+   bson_destroy(&u);
+
+   r = mongoc_collection_drop (collection, &error);
+   ASSERT (r);
+
    mongoc_collection_destroy(collection);
+   mongoc_database_destroy(database);
    bson_context_destroy(context);
    mongoc_client_destroy(client);
 }
@@ -242,22 +395,26 @@ static void
 test_delete (void)
 {
    mongoc_collection_t *collection;
+   mongoc_database_t *database;
    mongoc_client_t *client;
    bson_context_t *context;
    bson_error_t error;
-   bson_bool_t r;
+   bool r;
    bson_oid_t oid;
    bson_t b;
    int i;
 
    client = mongoc_client_new(gTestUri);
-   assert(client);
+   ASSERT (client);
 
-   collection = mongoc_client_get_collection(client, "test", "test");
-   assert(collection);
+   database = get_test_database (client);
+   ASSERT (database);
+
+   collection = get_test_collection (client, "test_delete");
+   ASSERT (collection);
 
    context = bson_context_new(BSON_CONTEXT_NONE);
-   assert(context);
+   ASSERT (context);
 
    for (i = 0; i < 100; i++) {
       bson_init(&b);
@@ -269,7 +426,7 @@ test_delete (void)
       if (!r) {
          MONGOC_WARNING("%s\n", error.message);
       }
-      assert(r);
+      ASSERT (r);
       bson_destroy(&b);
 
       bson_init(&b);
@@ -279,11 +436,15 @@ test_delete (void)
       if (!r) {
          MONGOC_WARNING("%s\n", error.message);
       }
-      assert(r);
+      ASSERT (r);
       bson_destroy(&b);
    }
 
+   r = mongoc_collection_drop (collection, &error);
+   ASSERT (r);
+
    mongoc_collection_destroy(collection);
+   mongoc_database_destroy(database);
    bson_context_destroy(context);
    mongoc_client_destroy(client);
 }
@@ -292,34 +453,42 @@ static void
 test_index (void)
 {
    mongoc_collection_t *collection;
+   mongoc_database_t *database;
    mongoc_client_t *client;
    mongoc_index_opt_t opt;
    bson_error_t error;
-   bson_bool_t r;
+   bool r;
    bson_t keys;
 
    mongoc_index_opt_init(&opt);
 
    client = mongoc_client_new(gTestUri);
-   assert(client);
+   ASSERT (client);
 
-   collection = mongoc_client_get_collection(client, "test", "test");
-   assert(collection);
+   database = get_test_database (client);
+   ASSERT (database);
+
+   collection = get_test_collection (client, "test_index");
+   ASSERT (collection);
 
    bson_init(&keys);
    bson_append_int32(&keys, "hello", -1, 1);
-   r = mongoc_collection_ensure_index(collection, &keys, &opt, &error);
-   assert(r);
+   r = mongoc_collection_create_index(collection, &keys, &opt, &error);
+   ASSERT (r);
 
-   r = mongoc_collection_ensure_index(collection, &keys, &opt, &error);
-   assert(r);
+   r = mongoc_collection_create_index(collection, &keys, &opt, &error);
+   ASSERT (r);
 
    r = mongoc_collection_drop_index(collection, "hello_1", &error);
-   assert(r);
+   ASSERT (r);
 
    bson_destroy(&keys);
 
+   r = mongoc_collection_drop (collection, &error);
+   ASSERT (r);
+
    mongoc_collection_destroy(collection);
+   mongoc_database_destroy(database);
    mongoc_client_destroy(client);
 }
 
@@ -330,14 +499,14 @@ test_count (void)
    mongoc_collection_t *collection;
    mongoc_client_t *client;
    bson_error_t error;
-   bson_int64_t count;
+   int64_t count;
    bson_t b;
 
    client = mongoc_client_new(gTestUri);
-   assert(client);
+   ASSERT (client);
 
    collection = mongoc_client_get_collection(client, "test", "test");
-   assert(collection);
+   ASSERT (collection);
 
    bson_init(&b);
    count = mongoc_collection_count(collection, MONGOC_QUERY_NONE, &b,
@@ -347,7 +516,7 @@ test_count (void)
    if (count == -1) {
       MONGOC_WARNING("%s\n", error.message);
    }
-   assert(count != -1);
+   ASSERT (count != -1);
 
    mongoc_collection_destroy(collection);
    mongoc_client_destroy(client);
@@ -358,23 +527,34 @@ static void
 test_drop (void)
 {
    mongoc_collection_t *collection;
+   mongoc_database_t *database;
    mongoc_client_t *client;
    bson_error_t error;
-   bson_bool_t r;
+   bson_t *doc;
+   bool r;
 
    client = mongoc_client_new(gTestUri);
-   assert(client);
+   ASSERT (client);
 
-   collection = mongoc_client_get_collection(client, "test", "test");
-   assert(collection);
+   database = get_test_database (client);
+   ASSERT (database);
+
+   collection = get_test_collection (client, "test_drop");
+   ASSERT (collection);
+
+   doc = BCON_NEW("hello", "world");
+   r = mongoc_collection_insert(collection, MONGOC_INSERT_NONE, doc, NULL, &error);
+   bson_destroy (doc);
+   ASSERT (r);
 
    r = mongoc_collection_drop(collection, &error);
-   assert(r == TRUE);
+   ASSERT (r == true);
 
    r = mongoc_collection_drop(collection, &error);
-   assert(r == FALSE);
+   ASSERT (r == false);
 
    mongoc_collection_destroy(collection);
+   mongoc_database_destroy(database);
    mongoc_client_destroy(client);
 }
 
@@ -383,15 +563,18 @@ static void
 test_aggregate (void)
 {
    mongoc_collection_t *collection;
+   mongoc_database_t *database;
    mongoc_client_t *client;
    mongoc_cursor_t *cursor;
    const bson_t *doc;
    bson_error_t error;
-   bson_bool_t r;
+   bool r;
    bson_t b;
+   bson_t opts;
    bson_t match;
    bson_t pipeline;
    bson_iter_t iter;
+   int i;
 
    bson_init(&b);
    bson_append_utf8(&b, "hello", -1, "world", -1);
@@ -403,42 +586,68 @@ test_aggregate (void)
    bson_append_document(&pipeline, "0", -1, &match);
 
    client = mongoc_client_new(gTestUri);
-   assert(client);
+   ASSERT (client);
 
-   collection = mongoc_client_get_collection(client, "test", "test");
-   assert(collection);
+   database = get_test_database (client);
+   ASSERT (database);
+
+   collection = get_test_collection (client, "test_aggregate");
+   ASSERT (collection);
 
    mongoc_collection_drop(collection, &error);
 
    r = mongoc_collection_insert(collection, MONGOC_INSERT_NONE, &b, NULL, &error);
-   assert(r);
+   ASSERT (r);
 
-   cursor = mongoc_collection_aggregate(collection, MONGOC_QUERY_NONE, &pipeline, NULL);
-   assert(cursor);
+   for (i = 0; i < 2; i++) {
+      if (i % 2 == 0) {
+         cursor = mongoc_collection_aggregate(collection, MONGOC_QUERY_NONE, &pipeline, NULL, NULL);
+         ASSERT (cursor);
+      } else {
+         bson_init (&opts);
+         BSON_APPEND_INT32 (&opts, "batchSize", 10);
+         BSON_APPEND_BOOL (&opts, "allowDiskUse", true);
 
-   /*
-    * This can fail if we are connecting to a pre-2.5.x MongoDB instance.
-    */
-   r = mongoc_cursor_next(cursor, &doc);
-   if (mongoc_cursor_error(cursor, &error)) {
-      MONGOC_WARNING("%s", error.message);
+         cursor = mongoc_collection_aggregate(collection, MONGOC_QUERY_NONE, &pipeline, &opts, NULL);
+         ASSERT (cursor);
+
+         bson_destroy (&opts);
+      }
+
+      /*
+       * This can fail if we are connecting to a 2.0 MongoDB instance.
+       */
+      r = mongoc_cursor_next(cursor, &doc);
+      if (mongoc_cursor_error(cursor, &error)) {
+         if ((error.domain == MONGOC_ERROR_QUERY) &&
+             (error.code == MONGOC_ERROR_QUERY_COMMAND_NOT_FOUND)) {
+            mongoc_cursor_destroy (cursor);
+            break;
+         }
+         MONGOC_WARNING("[%d.%d] %s", error.domain, error.code, error.message);
+      }
+
+      ASSERT (r);
+      ASSERT (doc);
+
+      ASSERT (bson_iter_init_find (&iter, doc, "hello") &&
+              BSON_ITER_HOLDS_UTF8 (&iter));
+
+      r = mongoc_cursor_next(cursor, &doc);
+      if (mongoc_cursor_error(cursor, &error)) {
+         MONGOC_WARNING("%s", error.message);
+      }
+      ASSERT (!r);
+      ASSERT (!doc);
+
+      mongoc_cursor_destroy(cursor);
    }
 
-   assert(r);
-   assert(doc);
+   r = mongoc_collection_drop(collection, &error);
+   ASSERT (r);
 
-   assert (bson_iter_init_find (&iter, doc, "hello") &&
-           BSON_ITER_HOLDS_UTF8 (&iter));
-
-   r = mongoc_cursor_next(cursor, &doc);
-   if (mongoc_cursor_error(cursor, &error)) {
-      MONGOC_WARNING("%s", error.message);
-   }
-   assert(!r);
-   assert(!doc);
-
-   mongoc_cursor_destroy(cursor);
    mongoc_collection_destroy(collection);
+   mongoc_database_destroy(database);
    mongoc_client_destroy(client);
    bson_destroy(&b);
    bson_destroy(&pipeline);
@@ -447,36 +656,345 @@ test_aggregate (void)
 
 
 static void
-log_handler (mongoc_log_level_t  log_level,
-             const char         *domain,
-             const char         *message,
-             void               *user_data)
+test_validate (void)
 {
-   /* Do Nothing */
+   mongoc_collection_t *collection;
+   mongoc_client_t *client;
+   bson_iter_t iter;
+   bson_error_t error;
+   bson_t doc = BSON_INITIALIZER;
+   bson_t opts = BSON_INITIALIZER;
+   bson_t reply;
+   bool r;
+
+   client = mongoc_client_new (gTestUri);
+   ASSERT (client);
+
+   collection = get_test_collection (client, "test_validate");
+   ASSERT (collection);
+
+   r = mongoc_collection_insert(collection, MONGOC_INSERT_NONE, &doc, NULL, &error);
+   assert (r);
+
+   BSON_APPEND_BOOL (&opts, "full", true);
+
+   r = mongoc_collection_validate (collection, &opts, &reply, &error);
+   assert (r);
+
+   assert (bson_iter_init_find (&iter, &reply, "ns"));
+   assert (bson_iter_init_find (&iter, &reply, "valid"));
+
+   bson_destroy (&reply);
+
+   bson_reinit (&opts);
+   BSON_APPEND_UTF8 (&opts, "full", "bad_value");
+
+   r = mongoc_collection_validate (collection, &opts, &reply, &error);
+   assert (!r);
+   assert (error.domain == MONGOC_ERROR_BSON);
+   assert (error.code == MONGOC_ERROR_BSON_INVALID);
+
+   r = mongoc_collection_drop (collection, &error);
+   assert (r);
+
+   mongoc_collection_destroy (collection);
+   mongoc_client_destroy (client);
+   bson_destroy (&doc);
+   bson_destroy (&opts);
 }
 
 
-int
-main (int   argc,
-      char *argv[])
+static void
+test_rename (void)
 {
-   if (argc <= 1 || !!strcmp(argv[1], "-v")) {
-      mongoc_log_set_handler(log_handler, NULL);
+   mongoc_collection_t *collection;
+   mongoc_client_t *client;
+   bson_error_t error;
+   bson_t doc = BSON_INITIALIZER;
+   bool r;
+
+   client = mongoc_client_new (gTestUri);
+   ASSERT (client);
+
+   collection = get_test_collection (client, "test_rename");
+   ASSERT (collection);
+
+   r = mongoc_collection_insert (collection, MONGOC_INSERT_NONE, &doc, NULL, &error);
+   assert (r);
+
+   r = mongoc_collection_rename (collection, "test", "test_rename_2", false, &error);
+   assert (r);
+
+   r = mongoc_collection_drop (collection, &error);
+   assert (r);
+
+   mongoc_collection_destroy (collection);
+   mongoc_client_destroy (client);
+   bson_destroy (&doc);
+}
+
+
+static void
+test_stats (void)
+{
+   mongoc_collection_t *collection;
+   mongoc_client_t *client;
+   bson_error_t error;
+   bson_iter_t iter;
+   bson_t stats;
+   bson_t doc = BSON_INITIALIZER;
+   bool r;
+
+   client = mongoc_client_new (gTestUri);
+   ASSERT (client);
+
+   collection = get_test_collection (client, "test_stats");
+   ASSERT (collection);
+
+   r = mongoc_collection_insert (collection, MONGOC_INSERT_NONE, &doc, NULL, &error);
+   assert (r);
+
+   r = mongoc_collection_stats (collection, NULL, &stats, &error);
+   assert (r);
+
+   assert (bson_iter_init_find (&iter, &stats, "ns"));
+
+   assert (bson_iter_init_find (&iter, &stats, "count"));
+   assert (bson_iter_as_int64 (&iter) >= 1);
+
+   bson_destroy (&stats);
+
+   r = mongoc_collection_drop (collection, &error);
+   assert (r);
+
+   mongoc_collection_destroy (collection);
+   mongoc_client_destroy (client);
+   bson_destroy (&doc);
+}
+
+
+static void
+test_find_and_modify (void)
+{
+   mongoc_collection_t *collection;
+   mongoc_client_t *client;
+   bson_error_t error;
+   bson_iter_t iter;
+   bson_iter_t citer;
+   bson_t *update;
+   bson_t doc = BSON_INITIALIZER;
+   bson_t reply;
+   bool r;
+
+   client = mongoc_client_new (gTestUri);
+   ASSERT (client);
+
+   collection = get_test_collection (client, "test_find_and_modify");
+   ASSERT (collection);
+
+   BSON_APPEND_INT32 (&doc, "superduper", 77889);
+
+   r = mongoc_collection_insert (collection, MONGOC_INSERT_NONE, &doc, NULL, &error);
+   assert (r);
+
+   update = BCON_NEW ("$set", "{",
+                         "superduper", BCON_INT32 (1234),
+                      "}");
+
+   r = mongoc_collection_find_and_modify (collection,
+                                          &doc,
+                                          NULL,
+                                          update,
+                                          NULL,
+                                          false,
+                                          false,
+                                          true,
+                                          &reply,
+                                          &error);
+   assert (r);
+
+   assert (bson_iter_init_find (&iter, &reply, "value"));
+   assert (BSON_ITER_HOLDS_DOCUMENT (&iter));
+   assert (bson_iter_recurse (&iter, &citer));
+   assert (bson_iter_find (&citer, "superduper"));
+   assert (BSON_ITER_HOLDS_INT32 (&citer));
+   assert (bson_iter_int32 (&citer) == 1234);
+
+   assert (bson_iter_init_find (&iter, &reply, "lastErrorObject"));
+   assert (BSON_ITER_HOLDS_DOCUMENT (&iter));
+   assert (bson_iter_recurse (&iter, &citer));
+   assert (bson_iter_find (&citer, "updatedExisting"));
+   assert (BSON_ITER_HOLDS_BOOL (&citer));
+   assert (bson_iter_bool (&citer));
+
+   bson_destroy (&reply);
+   bson_destroy (update);
+
+   r = mongoc_collection_drop (collection, &error);
+   assert (r);
+
+   mongoc_collection_destroy (collection);
+   mongoc_client_destroy (client);
+   bson_destroy (&doc);
+}
+
+
+static void
+test_large_return (void)
+{
+   mongoc_collection_t *collection;
+   mongoc_client_t *client;
+   mongoc_cursor_t *cursor;
+   bson_error_t error;
+   const bson_t *doc = NULL;
+   bson_oid_t oid;
+   bson_t insert_doc = BSON_INITIALIZER;
+   bson_t query = BSON_INITIALIZER;
+   size_t len;
+   char *str;
+   bool r;
+
+   client = mongoc_client_new (gTestUri);
+   ASSERT (client);
+
+   collection = get_test_collection (client, "test_large_return");
+   ASSERT (collection);
+
+   len = 1024 * 1024 * 4;
+   str = bson_malloc (len);
+   memset (str, (int)' ', len);
+   str [len - 1] = '\0';
+
+   bson_oid_init (&oid, NULL);
+   BSON_APPEND_OID (&insert_doc, "_id", &oid);
+   BSON_APPEND_UTF8 (&insert_doc, "big", str);
+
+   r = mongoc_collection_insert (collection, MONGOC_INSERT_NONE, &insert_doc, NULL, &error);
+   assert (r);
+
+   bson_destroy (&insert_doc);
+
+   BSON_APPEND_OID (&query, "_id", &oid);
+
+   cursor = mongoc_collection_find (collection, MONGOC_QUERY_NONE, 0, 0, 0, &query, NULL, NULL);
+   assert (cursor);
+   bson_destroy (&query);
+
+   r = mongoc_cursor_next (cursor, &doc);
+   assert (r);
+   assert (doc);
+
+   r = mongoc_cursor_next (cursor, &doc);
+   assert (!r);
+
+   mongoc_cursor_destroy (cursor);
+
+   r = mongoc_collection_drop (collection, &error);
+   assert (r);
+
+   mongoc_collection_destroy (collection);
+   mongoc_client_destroy (client);
+   bson_free (str);
+}
+
+
+static void
+test_many_return (void)
+{
+   mongoc_collection_t *collection;
+   mongoc_client_t *client;
+   mongoc_cursor_t *cursor;
+   bson_error_t error;
+   const bson_t *doc = NULL;
+   bson_oid_t oid;
+   bson_t query = BSON_INITIALIZER;
+   bson_t **docs;
+   size_t len;
+   bool r;
+   int i;
+
+   client = mongoc_client_new (gTestUri);
+   ASSERT (client);
+
+   collection = get_test_collection (client, "test_many_return");
+   ASSERT (collection);
+
+   docs = bson_malloc (sizeof(bson_t*) * 5000);
+
+   for (i = 0; i < 5000; i++) {
+      docs [i] = bson_new ();
+      bson_oid_init (&oid, NULL);
+      BSON_APPEND_OID (docs [i], "_id", &oid);
    }
 
-   gTestUri = bson_strdup_printf("mongodb://%s/", HOST);
+BEGIN_IGNORE_DEPRECATIONS;
 
-   run_test("/mongoc/collection/insert_bulk", test_insert_bulk);
-   run_test("/mongoc/collection/insert", test_insert);
-   run_test("/mongoc/collection/index", test_index);
-   run_test("/mongoc/collection/regex", test_regex);
-   run_test("/mongoc/collection/update", test_update);
-   run_test("/mongoc/collection/delete", test_delete);
-   run_test("/mongoc/collection/count", test_count);
-   run_test("/mongoc/collection/drop", test_drop);
-   run_test("/mongoc/collection/aggregate", test_aggregate);
+   r = mongoc_collection_insert_bulk (collection, MONGOC_INSERT_NONE, (const bson_t **)docs, 5000, NULL, &error);
 
-   bson_free(gTestUri);
+END_IGNORE_DEPRECATIONS;
 
-   return 0;
+   assert (r);
+
+   for (i = 0; i < 5000; i++) {
+      bson_destroy (docs [i]);
+   }
+
+   bson_free (docs);
+
+   cursor = mongoc_collection_find (collection, MONGOC_QUERY_NONE, 0, 0, 6000, &query, NULL, NULL);
+   assert (cursor);
+   bson_destroy (&query);
+
+   i = 0;
+
+   while (mongoc_cursor_next (cursor, &doc)) {
+      assert (doc);
+      i++;
+   }
+
+   assert (i == 5000);
+
+   r = mongoc_cursor_next (cursor, &doc);
+   assert (!r);
+
+   mongoc_cursor_destroy (cursor);
+
+   r = mongoc_collection_drop (collection, &error);
+   assert (r);
+
+   mongoc_collection_destroy (collection);
+   mongoc_client_destroy (client);
+}
+
+
+static void
+cleanup_globals (void)
+{
+   bson_free (gTestUri);
+}
+
+
+void
+test_collection_install (TestSuite *suite)
+{
+   gTestUri = bson_strdup_printf("mongodb://%s/", MONGOC_TEST_HOST);
+
+   TestSuite_Add (suite, "/Collection/insert_bulk", test_insert_bulk);
+   TestSuite_Add (suite, "/Collection/insert", test_insert);
+   TestSuite_Add (suite, "/Collection/save", test_save);
+   TestSuite_Add (suite, "/Collection/index", test_index);
+   TestSuite_Add (suite, "/Collection/regex", test_regex);
+   TestSuite_Add (suite, "/Collection/update", test_update);
+   TestSuite_Add (suite, "/Collection/delete", test_delete);
+   TestSuite_Add (suite, "/Collection/count", test_count);
+   TestSuite_Add (suite, "/Collection/drop", test_drop);
+   TestSuite_Add (suite, "/Collection/aggregate", test_aggregate);
+   TestSuite_Add (suite, "/Collection/validate", test_validate);
+   TestSuite_Add (suite, "/Collection/rename", test_rename);
+   TestSuite_Add (suite, "/Collection/stats", test_stats);
+   TestSuite_Add (suite, "/Collection/find_and_modify", test_find_and_modify);
+   TestSuite_Add (suite, "/Collection/large_return", test_large_return);
+   TestSuite_Add (suite, "/Collection/many_return", test_many_return);
+
+   atexit (cleanup_globals);
 }
