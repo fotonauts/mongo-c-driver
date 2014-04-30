@@ -104,7 +104,7 @@ _mongoc_socket_setnonblock (int sd)
  *--------------------------------------------------------------------------
  */
 
-bool
+static bool
 #ifdef _WIN32
 _mongoc_socket_wait (SOCKET   sd,           /* IN */
 #else
