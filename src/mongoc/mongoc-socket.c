@@ -162,7 +162,7 @@ _mongoc_socket_wait (int      sd,           /* IN */
 }
 
 
-bool
+static bool
 #ifdef _WIN32
 _mongoc_socket_setnodelay (SOCKET sd) /* IN */
 #else
@@ -802,14 +802,14 @@ mongoc_socket_send (mongoc_socket_t *sock,      /* IN */
  *--------------------------------------------------------------------------
  */
 
-ssize_t
+static ssize_t
 _mongoc_socket_try_sendv_slow (mongoc_socket_t *sock,   /* IN */
                                mongoc_iovec_t  *iov,    /* IN */
                                size_t           iovcnt) /* IN */
 {
    ssize_t ret = 0;
    size_t i;
-   int wrote;
+   ssize_t wrote;
 
    ENTRY;
 
@@ -861,10 +861,10 @@ _mongoc_socket_try_sendv_slow (mongoc_socket_t *sock,   /* IN */
  *--------------------------------------------------------------------------
  */
 
-ssize_t
+static ssize_t
 _mongoc_socket_try_sendv (mongoc_socket_t *sock,   /* IN */
                           mongoc_iovec_t  *iov,    /* IN */
-                          size_t           iovcnt) /* IN */
+                          int              iovcnt) /* IN */
 {
 #ifdef _WIN32
    DWORD dwNumberofBytesSent = 0;
@@ -942,12 +942,12 @@ _mongoc_socket_try_sendv (mongoc_socket_t *sock,   /* IN */
 ssize_t
 mongoc_socket_sendv (mongoc_socket_t  *sock,      /* IN */
                      mongoc_iovec_t   *iov,       /* IN */
-                     size_t            iovcnt,    /* IN */
+                     int               iovcnt,    /* IN */
                      int64_t           expire_at) /* IN */
 {
    ssize_t ret = 0;
    ssize_t sent;
-   size_t cur = 0;
+   int cur = 0;
 
    ENTRY;
 
