@@ -41,7 +41,7 @@ static int
 _mongoc_sasl_get_pass (mongoc_sasl_t  *sasl,
                        int             param_id,
                        const char    **result,
-                       unsigned       *result_len)
+                       size_t        *result_len)
 {
    BSON_ASSERT (sasl);
    BSON_ASSERT (param_id == SASL_CB_PASS);
@@ -73,7 +73,7 @@ static int
 _mongoc_sasl_get_user (mongoc_sasl_t  *sasl,
                        int             param_id,
                        const char    **result,
-                       unsigned       *result_len)
+                       size_t        *result_len)
 {
    BSON_ASSERT (sasl);
    BSON_ASSERT ((param_id == SASL_CB_USER) || (param_id == SASL_CB_AUTHNAME));

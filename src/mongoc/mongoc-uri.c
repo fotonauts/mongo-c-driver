@@ -225,7 +225,7 @@ mongoc_uri_parse_host (mongoc_uri_t  *uri,
 }
 
 
-bool
+static bool
 _mongoc_host_list_from_string (mongoc_host_list_t *host_list,
                                const char         *host_and_port)
 {
