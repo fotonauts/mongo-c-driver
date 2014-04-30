@@ -63,7 +63,7 @@ _mongoc_get_cpu_count (void)
 
    return len;
 #elif defined(__APPLE__) || defined(__sun)
-   int ncpu;
+   long ncpu;
 
    ncpu = sysconf (_SC_NPROCESSORS_ONLN);
    return (ncpu > 0) ? ncpu : 1;
