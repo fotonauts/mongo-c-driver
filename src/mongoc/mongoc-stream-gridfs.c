@@ -28,6 +28,7 @@
 #undef MONGOC_LOG_DOMAIN
 #define MONGOC_LOG_DOMAIN "stream-gridfs"
 
+#include "mongoc-stream-gridfs.h"
 
 typedef struct
 {

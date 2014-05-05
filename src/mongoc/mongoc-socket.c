@@ -864,7 +864,7 @@ _mongoc_socket_try_sendv_slow (mongoc_socket_t *sock,   /* IN */
 static ssize_t
 _mongoc_socket_try_sendv (mongoc_socket_t *sock,   /* IN */
                           mongoc_iovec_t  *iov,    /* IN */
-                          int              iovcnt) /* IN */
+                          size_t           iovcnt) /* IN */
 {
 #ifdef _WIN32
    DWORD dwNumberofBytesSent = 0;
@@ -888,7 +888,7 @@ _mongoc_socket_try_sendv (mongoc_socket_t *sock,   /* IN */
 #else
    memset (&msg, 0, sizeof msg);
    msg.msg_iov = iov;
-   msg.msg_iovlen = iovcnt;
+   msg.msg_iovlen = (int)iovcnt;
    ret = sendmsg (sock->sd, &msg,
 # ifdef MSG_NOSIGNAL
                   MSG_NOSIGNAL);
@@ -942,12 +942,12 @@ _mongoc_socket_try_sendv (mongoc_socket_t *sock,   /* IN */
 ssize_t
 mongoc_socket_sendv (mongoc_socket_t  *sock,      /* IN */
                      mongoc_iovec_t   *iov,       /* IN */
-                     int               iovcnt,    /* IN */
+                     size_t            iovcnt,    /* IN */
                      int64_t           expire_at) /* IN */
 {
    ssize_t ret = 0;
    ssize_t sent;
-   int cur = 0;
+   size_t cur = 0;
 
    ENTRY;
 

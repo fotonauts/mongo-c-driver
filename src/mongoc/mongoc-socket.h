@@ -88,7 +88,7 @@ ssize_t          mongoc_socket_send       (mongoc_socket_t       *sock,
                                            int64_t                expire_at);
 ssize_t          mongoc_socket_sendv      (mongoc_socket_t       *sock,
                                            mongoc_iovec_t        *iov,
-                                           int                    iovcnt,
+                                           size_t                 iovcnt,
                                            int64_t                expire_at);
 
 

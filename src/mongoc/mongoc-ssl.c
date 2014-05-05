@@ -31,6 +31,8 @@
 #include "mongoc-trace.h"
 #include "mongoc-thread-private.h"
 
+#include "mongoc-ssl-private.h"
+
 #ifdef _WIN32
 # define strncasecmp _strnicmp
 # define strcasecmp  _stricmp
@@ -55,8 +57,10 @@ mongoc_ssl_opt_t gMongocSslOptDefault = {
 
 static mongoc_mutex_t * gMongocSslThreadLocks;
 
+#if !defined(__APPLE__)
 static void _mongoc_ssl_thread_startup(void);
 static void _mongoc_ssl_thread_cleanup(void);
+#endif
 
 const mongoc_ssl_opt_t *
 mongoc_ssl_opt_get_default (void)
@@ -75,17 +79,21 @@ mongoc_ssl_opt_get_default (void)
 void
 _mongoc_ssl_init (void)
 {
+#if !defined(__APPLE__)
    SSL_library_init ();
    SSL_load_error_strings ();
    ERR_load_BIO_strings ();
    OpenSSL_add_all_algorithms ();
    _mongoc_ssl_thread_startup ();
+#endif
 }
 
 void
 _mongoc_ssl_cleanup (void)
 {
+#if !defined(__APPLE__)
    _mongoc_ssl_thread_cleanup ();
+#endif
 }
 
 static int
@@ -168,7 +176,7 @@ _mongoc_ssl_hostcheck (const char *pattern,
                        suffixlen) == 0;
 }
 
-
+#if !defined(__APPLE__)
 /** check if a provided cert matches a passed hostname
  */
 bool
@@ -302,7 +310,6 @@ _mongoc_ssl_check_cert (SSL        *ssl,
    return r;
 }
 
-
 static bool
 _mongoc_ssl_setup_ca (SSL_CTX    *ctx,
                       const char *cert,
@@ -362,7 +369,6 @@ _mongoc_ssl_setup_pem_file (SSL_CTX    *ctx,
 
    return 1;
 }
-
 
 /**
  * _mongoc_ssl_ctx_new:
@@ -469,6 +475,8 @@ _mongoc_ssl_extract_subject (const char *filename)
    return str;
 }
 
+#endif
+
 #ifdef _WIN32
 
 static unsigned long
@@ -506,6 +514,7 @@ _mongoc_ssl_thread_locking_callback (int         mode,
    }
 }
 
+#if !defined(__APPLE__)
 static void
 _mongoc_ssl_thread_startup (void)
 {
@@ -533,3 +542,4 @@ _mongoc_ssl_thread_cleanup (void)
    }
    OPENSSL_free (gMongocSslThreadLocks);
 }
+#endif
