@@ -20,6 +20,7 @@
 #include <sys/types.h>
 
 #include "mongoc-host-list.h"
+#include "mongoc-host-list-private.h"
 #include "mongoc-log.h"
 #include "mongoc-socket.h"
 #include "mongoc-uri.h"
@@ -225,7 +226,7 @@ mongoc_uri_parse_host (mongoc_uri_t  *uri,
 }
 
 
-static bool
+bool
 _mongoc_host_list_from_string (mongoc_host_list_t *host_list,
                                const char         *host_and_port)
 {
