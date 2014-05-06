@@ -19,8 +19,10 @@
 
 #include <errno.h>
 #include <string.h>
+#include <sys/mman.h>
 
 #include <Security/Security.h>
+#include <CoreFoundation/CoreFoundation.h>
 
 #include "mongoc-counters-private.h"
 #include "mongoc-errno-private.h"
@@ -452,6 +454,62 @@ mongoc_stream_tls_do_handshake (mongoc_stream_t *stream,
    return false;
 }
 
+static CFDataRef
+createDataFromFilename(const char *filename)
+{
+    int fileDescriptor;
+    CFDataRef result = NULL;
+    
+    fileDescriptor = open(filename, O_RDONLY, 0);
+    if (fileDescriptor != -1) {
+        struct stat fileStat;
+        
+        if (stat(filename, &fileStat) != -1) {
+            unsigned char *fileContent;
+            
+            fileContent = mmap(0, fileStat.st_size, PROT_READ, MAP_FILE|MAP_PRIVATE, fileDescriptor, 0);
+            if (MAP_FAILED != fileContent) {
+                result = CFDataCreate(NULL, fileContent, fileStat.st_size);
+                munmap(fileContent, fileStat.st_size);
+            }
+        }
+        close(fileDescriptor);
+    }
+    return result;
+}
+
+char *
+_mongoc_ssl_extract_subject (const char *filename)
+{
+    CFDataRef data;
+    char *result = NULL;
+    
+    data = createDataFromFilename(filename);
+    if (data) {
+        SecCertificateRef certificate;
+        
+        certificate = SecCertificateCreateWithData(NULL, data);
+        if (certificate) {
+            CFStringRef subject;
+            
+            subject = SecCertificateCopySubjectSummary(certificate);
+            if (subject) {
+                CFIndex length = CFStringGetMaximumSizeForEncoding(CFStringGetLength(subject), kCFStringEncodingUTF8) + 1;
+                
+                result = bson_malloc(length);
+                if (!CFStringGetCString(subject, result, length, kCFStringEncodingUTF8)) {
+                    bson_free(result);
+                    result = NULL;
+                }
+                CFRelease(subject);
+            }
+            CFRelease(certificate);
+        }
+    }
+    CFRelease(data);
+    
+    return result;
+}
 
 /**
  * mongoc_stream_tls_check_cert:

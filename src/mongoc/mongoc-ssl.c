@@ -28,10 +28,9 @@
 #include "mongoc-init.h"
 #include "mongoc-socket.h"
 #include "mongoc-ssl.h"
+#include "mongoc-ssl-private.h"
 #include "mongoc-trace.h"
 #include "mongoc-thread-private.h"
-
-#include "mongoc-ssl-private.h"
 
 #ifdef _WIN32
 # define strncasecmp _strnicmp
