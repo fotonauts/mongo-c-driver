@@ -33,11 +33,11 @@
 typedef struct
 {
    const bson_t       *result;
-   bool         has_array;
+   bool                has_array;
    bson_iter_t         iter;
    bson_t              bson;
-   uint32_t       document_len;
-   const uint8_t *document;
+   uint32_t            document_len;
+   const uint8_t      *document;
 } mongoc_cursor_array_t;
 
 

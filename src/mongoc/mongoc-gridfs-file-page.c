@@ -52,7 +52,7 @@ _mongoc_gridfs_file_page_new (const uint8_t *data,
 
 bool
 _mongoc_gridfs_file_page_seek (mongoc_gridfs_file_page_t *page,
-                               uint32_t              offset)
+                               uint32_t                   offset)
 {
    ENTRY;
 
@@ -69,9 +69,9 @@ _mongoc_gridfs_file_page_seek (mongoc_gridfs_file_page_t *page,
 int32_t
 _mongoc_gridfs_file_page_read (mongoc_gridfs_file_page_t *page,
                                void                      *dst,
-                               uint32_t              len)
+                               uint32_t                   len)
 {
-   int bytes_read;
+   int32_t bytes_read;
    const uint8_t *src;
 
    ENTRY;
@@ -103,9 +103,9 @@ _mongoc_gridfs_file_page_read (mongoc_gridfs_file_page_t *page,
 int32_t
 _mongoc_gridfs_file_page_write (mongoc_gridfs_file_page_t *page,
                                 const void                *src,
-                                uint32_t              len)
+                                uint32_t                   len)
 {
-   int bytes_written;
+   int32_t bytes_written;
 
    ENTRY;
 
