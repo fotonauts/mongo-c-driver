@@ -467,10 +467,10 @@ createDataFromFilename(const char *filename)
         if (stat(filename, &fileStat) != -1) {
             unsigned char *fileContent;
             
-            fileContent = mmap(0, fileStat.st_size, PROT_READ, MAP_FILE|MAP_PRIVATE, fileDescriptor, 0);
+            fileContent = mmap(0, (size_t)fileStat.st_size, PROT_READ, MAP_FILE|MAP_PRIVATE, fileDescriptor, 0);
             if (MAP_FAILED != fileContent) {
-                result = CFDataCreate(NULL, fileContent, fileStat.st_size);
-                munmap(fileContent, fileStat.st_size);
+                result = CFDataCreate(NULL, fileContent, (CFIndex)fileStat.st_size);
+                munmap(fileContent, (size_t)fileStat.st_size);
             }
         }
         close(fileDescriptor);
