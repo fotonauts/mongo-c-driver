@@ -81,8 +81,10 @@ _mongoc_n_return (mongoc_cursor_t * cursor)
    /* by default, use the batch size */
    int32_t r = cursor->batch_size;
 
-   /* if we have a limit */
-   if (cursor->limit) {
+   if (cursor->is_command) {
+      /* commands always have n_return of 1 */
+      r = 1;
+   } else if (cursor->limit) {
       /* calculate remaining */
       uint32_t remaining = cursor->limit - cursor->count;
 
@@ -677,9 +679,13 @@ mongoc_cursor_error (mongoc_cursor_t *cursor,
        * Rewrite the error code if we are talking to an older mongod
        * and the command was not found. It used to simply return an
        * error code of 17 and we can synthesize 59.
+       *
+       * Additionally, old versions of mongos may send 13390 indicating
+       * unrecognized command.
        */
       if (cursor->is_command &&
-          (error->code == MONGOC_ERROR_PROTOCOL_ERROR)) {
+          ((error->code == MONGOC_ERROR_PROTOCOL_ERROR) ||
+           (error->code == 13390))) {
          error->code = MONGOC_ERROR_QUERY_COMMAND_NOT_FOUND;
       }
    }

@@ -104,7 +104,7 @@ _mongoc_socket_setnonblock (int sd)
  *--------------------------------------------------------------------------
  */
 
-bool
+static bool
 #ifdef _WIN32
 _mongoc_socket_wait (SOCKET   sd,           /* IN */
 #else
@@ -162,7 +162,7 @@ _mongoc_socket_wait (int      sd,           /* IN */
 }
 
 
-bool
+static bool
 #ifdef _WIN32
 _mongoc_socket_setnodelay (SOCKET sd) /* IN */
 #else
@@ -701,6 +701,8 @@ again:
 
    DUMP_BYTES (recvbuf, (uint8_t *)buf, ret);
 
+   mongoc_counter_streams_ingress_add (ret > 0 ? ret : 0);
+
    RETURN (ret);
 }
 
@@ -800,14 +802,14 @@ mongoc_socket_send (mongoc_socket_t *sock,      /* IN */
  *--------------------------------------------------------------------------
  */
 
-ssize_t
+static ssize_t
 _mongoc_socket_try_sendv_slow (mongoc_socket_t *sock,   /* IN */
                                mongoc_iovec_t  *iov,    /* IN */
                                size_t           iovcnt) /* IN */
 {
    ssize_t ret = 0;
    size_t i;
-   int wrote;
+   ssize_t wrote;
 
    ENTRY;
 
@@ -859,7 +861,7 @@ _mongoc_socket_try_sendv_slow (mongoc_socket_t *sock,   /* IN */
  *--------------------------------------------------------------------------
  */
 
-ssize_t
+static ssize_t
 _mongoc_socket_try_sendv (mongoc_socket_t *sock,   /* IN */
                           mongoc_iovec_t  *iov,    /* IN */
                           size_t           iovcnt) /* IN */
@@ -886,7 +888,7 @@ _mongoc_socket_try_sendv (mongoc_socket_t *sock,   /* IN */
 #else
    memset (&msg, 0, sizeof msg);
    msg.msg_iov = iov;
-   msg.msg_iovlen = iovcnt;
+   msg.msg_iovlen = (int)iovcnt;
    ret = sendmsg (sock->sd, &msg,
 # ifdef MSG_NOSIGNAL
                   MSG_NOSIGNAL);

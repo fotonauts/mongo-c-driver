@@ -52,7 +52,7 @@ _mongoc_cursor_cursorid_new (void)
 }
 
 
-void
+static void
 _mongoc_cursor_cursorid_destroy (mongoc_cursor_t *cursor)
 {
    ENTRY;
@@ -64,7 +64,7 @@ _mongoc_cursor_cursorid_destroy (mongoc_cursor_t *cursor)
 }
 
 
-bool
+static bool
 _mongoc_cursor_cursorid_next (mongoc_cursor_t *cursor,
                               const bson_t   **bson)
 {
@@ -125,21 +125,20 @@ process_first_batch:
 
          cursor->is_command = false;
 
-         if (cursor->rpc.reply.cursor_id) {
-            ret = _mongoc_cursor_next (cursor, bson);
-         } else if (cid->in_first_batch) {
+         if (cid->in_first_batch) {
             cursor->end_of_event = false;
             goto process_first_batch;
+         } else if (cursor->rpc.reply.cursor_id) {
+            ret = _mongoc_cursor_next (cursor, bson);
          }
       }
    }
-
 
    RETURN (ret);
 }
 
 
-mongoc_cursor_t *
+static mongoc_cursor_t *
 _mongoc_cursor_cursorid_clone (const mongoc_cursor_t *cursor)
 {
    mongoc_cursor_t *clone_;

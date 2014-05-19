@@ -333,10 +333,12 @@ mongoc_collection_aggregate (mongoc_collection_t       *collection, /* IN */
       /* even for newer versions, we get back a cursor document, that we have
        * to patch in */
       _mongoc_cursor_cursorid_init(cursor);
+      cursor->limit = 0;
    } else {
       /* for older versions we get an array that we can create a synthetic
        * cursor on top of */
       _mongoc_cursor_array_init(cursor);
+      cursor->limit = 0;
    }
 
    bson_destroy(&command);
@@ -1539,11 +1541,11 @@ mongoc_collection_rename (mongoc_collection_t *collection,
 
       bson_snprintf (collection->collection, sizeof collection->collection,
                      "%s", new_name);
-      collection->collectionlen = strlen (collection->collection);
+      collection->collectionlen = (int) strlen (collection->collection);
 
       bson_snprintf (collection->ns, sizeof collection->ns,
                      "%s.%s", collection->db, new_name);
-      collection->nslen = strlen (collection->ns);
+      collection->nslen = (int) strlen (collection->ns);
    }
 
    bson_destroy (&cmd);

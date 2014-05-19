@@ -33,11 +33,11 @@
 typedef struct
 {
    const bson_t       *result;
-   bool         has_array;
+   bool                has_array;
    bson_iter_t         iter;
    bson_t              bson;
-   uint32_t       document_len;
-   const uint8_t *document;
+   uint32_t            document_len;
+   const uint8_t      *document;
 } mongoc_cursor_array_t;
 
 
@@ -54,7 +54,7 @@ _mongoc_cursor_array_new (void)
 }
 
 
-void
+static void
 _mongoc_cursor_array_destroy (mongoc_cursor_t *cursor)
 {
    ENTRY;
@@ -66,7 +66,7 @@ _mongoc_cursor_array_destroy (mongoc_cursor_t *cursor)
 }
 
 
-bool
+static bool
 _mongoc_cursor_array_next (mongoc_cursor_t *cursor,
                            const bson_t   **bson)
 {
@@ -106,7 +106,7 @@ _mongoc_cursor_array_next (mongoc_cursor_t *cursor,
 }
 
 
-mongoc_cursor_t *
+static mongoc_cursor_t *
 _mongoc_cursor_array_clone (const mongoc_cursor_t *cursor)
 {
    mongoc_cursor_t *clone_;
@@ -120,7 +120,7 @@ _mongoc_cursor_array_clone (const mongoc_cursor_t *cursor)
 }
 
 
-bool
+static bool
 _mongoc_cursor_array_more (mongoc_cursor_t *cursor)
 {
    bool ret;

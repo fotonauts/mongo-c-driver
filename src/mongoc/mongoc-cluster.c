@@ -498,13 +498,13 @@ _mongoc_cluster_init (mongoc_cluster_t   *cluster,
    if (bson_iter_init_find_case (&iter, b, "replicaSet")) {
       cluster->mode = MONGOC_CLUSTER_REPLICA_SET;
       cluster->replSet = bson_iter_dup_utf8 (&iter, NULL);
-      MONGOC_INFO("Client initialized in replica set mode.");
+      MONGOC_DEBUG ("Client initialized in replica set mode.");
    } else if (hosts->next) {
       cluster->mode = MONGOC_CLUSTER_SHARDED_CLUSTER;
-      MONGOC_INFO("Client initialized in sharded cluster mode.");
+      MONGOC_DEBUG ("Client initialized in sharded cluster mode.");
    } else {
       cluster->mode = MONGOC_CLUSTER_DIRECT;
-      MONGOC_INFO("Client initialized in direct mode.");
+      MONGOC_DEBUG ("Client initialized in direct mode.");
    }
 
    if (bson_iter_init_find_case(&iter, b, "sockettimeoutms")) {
@@ -1177,7 +1177,8 @@ _mongoc_cluster_auth_node_cr (mongoc_cluster_t      *cluster,
    BSON_ASSERT(cluster);
    BSON_ASSERT(node);
 
-   if (!(auth_source = mongoc_uri_get_auth_source(cluster->uri))) {
+   if (!(auth_source = mongoc_uri_get_auth_source(cluster->uri)) ||
+       (*auth_source == '\0')) {
       auth_source = "admin";
    }
 
@@ -1421,6 +1422,10 @@ _mongoc_cluster_auth_node_sasl (mongoc_cluster_t      *cluster,
          bson_append_utf8 (&cmd, "payload", 7, (const char *)buf, buflen);
       }
 
+      MONGOC_INFO ("SASL: authenticating \"%s\" (step %d)",
+                   mongoc_uri_get_username (cluster->uri),
+                   sasl.step);
+
       if (!_mongoc_cluster_run_command (cluster, node, "$external", &cmd, &reply, error)) {
          bson_destroy (&cmd);
          goto failure;
@@ -1441,6 +1446,8 @@ _mongoc_cluster_auth_node_sasl (mongoc_cluster_t      *cluster,
           !(conv_id = bson_iter_int32 (&iter)) ||
           !bson_iter_init_find (&iter, &reply, "payload") ||
           !BSON_ITER_HOLDS_UTF8 (&iter)) {
+         MONGOC_INFO ("SASL: authentication failed for \"%s\"",
+                      mongoc_uri_get_username (cluster->uri));
          bson_destroy (&reply);
          bson_set_error (error,
                          MONGOC_ERROR_CLIENT,
@@ -1463,6 +1470,9 @@ _mongoc_cluster_auth_node_sasl (mongoc_cluster_t      *cluster,
 
       bson_destroy (&reply);
    }
+
+   MONGOC_INFO ("SASL: \"%s\" authenticated",
+                mongoc_uri_get_username (cluster->uri));
 
    ret = true;
 
@@ -1961,6 +1971,7 @@ _mongoc_cluster_reconnect_replica_set (mongoc_cluster_t *cluster,
       cluster->nodes[i].host = host;
       cluster->nodes[i].index = i;
       cluster->nodes[i].stream = stream;
+      cluster->nodes[i].needs_auth = cluster->requires_auth;
 
       if (!_mongoc_cluster_ismaster(cluster, &cluster->nodes[i], error)) {
          _mongoc_cluster_node_destroy(&cluster->nodes[i]);
@@ -2083,6 +2094,7 @@ _mongoc_cluster_reconnect_sharded_cluster (mongoc_cluster_t *cluster,
       cluster->nodes[i].host = *iter;
       cluster->nodes[i].index = i;
       cluster->nodes[i].stream = stream;
+      cluster->nodes[i].needs_auth = cluster->requires_auth;
 
       if (!_mongoc_cluster_ismaster (cluster, &cluster->nodes[i], error)) {
          _mongoc_cluster_node_destroy (&cluster->nodes[i]);
