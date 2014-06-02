@@ -73,16 +73,20 @@ AC_ARG_WITH(libbson,
 AS_IF([test "x$with_libbson" != xbundled && test "x$with_libbson" != xsystem],
       [with_libbson=auto])
 
-
-AC_ARG_ENABLE([ssl],
-              [AS_HELP_STRING([--enable-ssl=@<:@auto/yes/no@:>@],
-                              [Use OpenSSL for TLS connections.])],
+AC_ARG_ENABLE([html-docs],
+              [AS_HELP_STRING([--enable-html-docs=@<:@yes/no@:>@],
+                              [Build HTML documentation.])],
               [],
-              [enable_ssl=auto])
+              [enable_html_docs=no])
 
-
-AC_ARG_ENABLE([sasl],
-              [AS_HELP_STRING([--enable-sasl=@<:@auto/yes/no@:>@],
-                              [Use libsasl2 for Kerberos.])],
+AC_ARG_ENABLE([man-pages],
+              [AS_HELP_STRING([--enable-man-pages=@<:@yes/no@:>@],
+                              [Build and install man-pages.])],
               [],
-              [enable_sasl=auto])
+              [enable_man_pages=no])
+
+AC_ARG_ENABLE([yelp],
+              [AS_HELP_STRING([--enable-yelp=@<:@yes/no@:>@],
+                              [Install yelp manuals.])],
+              [],
+              [enable_yelp=no])

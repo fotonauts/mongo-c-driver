@@ -4,7 +4,10 @@ EXAMPLE_LDADD = libmongoc-1.0.la
 if EXPLICIT_LIBS
 EXAMPLE_LDADD += $(BSON_LIBS)
 endif
-EXAMPLE_CFLAGS = -I$(top_srcdir)/src/mongoc $(BSON_CFLAGS)
+EXAMPLE_CFLAGS = \
+	-I$(top_srcdir)/src/mongoc \
+	-I$(top_builddir)/src/mongoc \
+	$(BSON_CFLAGS)
 
 noinst_PROGRAMS += example-gridfs
 example_gridfs_SOURCES = examples/example-gridfs.c
@@ -45,3 +48,28 @@ noinst_PROGRAMS += find-and-modify
 find_and_modify_SOURCES = examples/find-and-modify.c
 find_and_modify_CFLAGS = $(EXAMPLE_CFLAGS)
 find_and_modify_LDADD = $(EXAMPLE_LDADD)
+
+noinst_PROGRAMS += example-matcher
+example_matcher_SOURCES = examples/example-matcher.c
+example_matcher_CFLAGS = $(EXAMPLE_CFLAGS)
+example_matcher_LDADD = $(EXAMPLE_LDADD)
+
+noinst_PROGRAMS += bulk1
+bulk1_SOURCES = examples/bulk/bulk1.c
+bulk1_CFLAGS = $(EXAMPLE_CFLAGS)
+bulk1_LDADD = $(EXAMPLE_LDADD)
+
+noinst_PROGRAMS += bulk2
+bulk2_SOURCES = examples/bulk/bulk2.c
+bulk2_CFLAGS = $(EXAMPLE_CFLAGS)
+bulk2_LDADD = $(EXAMPLE_LDADD)
+
+noinst_PROGRAMS += bulk3
+bulk3_SOURCES = examples/bulk/bulk3.c
+bulk3_CFLAGS = $(EXAMPLE_CFLAGS)
+bulk3_LDADD = $(EXAMPLE_LDADD)
+
+noinst_PROGRAMS += aggregation1
+aggregation1_SOURCES = examples/aggregation/aggregation1.c
+aggregation1_CFLAGS = $(EXAMPLE_CFLAGS)
+aggregation1_LDADD = $(EXAMPLE_LDADD)

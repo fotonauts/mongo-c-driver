@@ -108,9 +108,14 @@ bool                          mongoc_collection_delete               (mongoc_col
                                                                       mongoc_delete_flags_t          flags,
                                                                       const bson_t                  *selector,
                                                                       const mongoc_write_concern_t  *write_concern,
-                                                                      bson_error_t                  *error);
+                                                                      bson_error_t                  *error) BSON_GNUC_DEPRECATED_FOR (mongoc_collection_remove);
 bool                          mongoc_collection_save                 (mongoc_collection_t           *collection,
                                                                       const bson_t                  *document,
+                                                                      const mongoc_write_concern_t  *write_concern,
+                                                                      bson_error_t                  *error);
+bool                          mongoc_collection_remove               (mongoc_collection_t           *collection,
+                                                                      mongoc_remove_flags_t          flags,
+                                                                      const bson_t                  *selector,
                                                                       const mongoc_write_concern_t  *write_concern,
                                                                       bson_error_t                  *error);
 bool                          mongoc_collection_rename               (mongoc_collection_t           *collection,
@@ -134,7 +139,7 @@ bool                          mongoc_collection_stats                (mongoc_col
                                                                       bson_error_t                  *error);
 mongoc_bulk_operation_t      *mongoc_collection_create_bulk_operation(mongoc_collection_t           *collection,
                                                                       bool                           ordered,
-                                                                      const mongoc_write_concern_t  *write_concern);
+                                                                      const mongoc_write_concern_t  *write_concern) BSON_GNUC_WARN_UNUSED_RESULT;
 const mongoc_read_prefs_t    *mongoc_collection_get_read_prefs       (const mongoc_collection_t     *collection);
 void                          mongoc_collection_set_read_prefs       (mongoc_collection_t           *collection,
                                                                       const mongoc_read_prefs_t     *read_prefs);

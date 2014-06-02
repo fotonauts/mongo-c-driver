@@ -272,7 +272,7 @@ mongoc_collection_aggregate (mongoc_collection_t       *collection, /* IN */
    uint32_t hint;
    bson_t command;
    bson_t child;
-   int32_t batch_size;
+   int32_t batch_size = 0;
    bool did_batch_size = false;
 
    bson_return_val_if_fail (collection, NULL);
@@ -286,11 +286,19 @@ mongoc_collection_aggregate (mongoc_collection_t       *collection, /* IN */
                                         &max_wire_version,
                                         NULL);
 
-   bson_init(&command);
-   bson_append_utf8(&command, "aggregate", 9,
-                    collection->collection,
-                    collection->collectionlen);
-   bson_append_array(&command, "pipeline", 8, pipeline);
+   bson_init (&command);
+   BSON_APPEND_UTF8 (&command, "aggregate", collection->collection);
+
+   /*
+    * The following will allow @pipeline to be either an array of
+    * items for the pipeline, or {"pipeline": [...]}.
+    */
+   if (bson_iter_init_find (&iter, pipeline, "pipeline") &&
+       BSON_ITER_HOLDS_ARRAY (&iter)) {
+      bson_append_iter (&command, "pipeline", 8, &iter);
+   } else {
+      BSON_APPEND_ARRAY (&command, "pipeline", pipeline);
+   }
 
    /* for newer version, we include a cursor subdocument */
    if (max_wire_version) {
@@ -325,8 +333,9 @@ mongoc_collection_aggregate (mongoc_collection_t       *collection, /* IN */
       bson_append_document_end (&command, &child);
    }
 
-   cursor = mongoc_collection_command(collection, flags, 0, 1, 0, &command,
-                                      NULL, read_prefs);
+   cursor = mongoc_collection_command (collection, flags, 0, 0, batch_size,
+                                       &command, NULL, read_prefs);
+
    cursor->hint = hint;
 
    if (max_wire_version > 0) {
@@ -1165,7 +1174,7 @@ mongoc_collection_save (mongoc_collection_t          *collection,
 /*
  *--------------------------------------------------------------------------
  *
- * mongoc_collection_delete --
+ * mongoc_collection_remove --
  *
  *       Delete one or more items from a collection. If you want to
  *       limit to a single delete, provided MONGOC_DELETE_SINGLE_REMOVE
@@ -1193,8 +1202,8 @@ mongoc_collection_save (mongoc_collection_t          *collection,
  */
 
 bool
-mongoc_collection_delete (mongoc_collection_t          *collection,
-                          mongoc_delete_flags_t         flags,
+mongoc_collection_remove (mongoc_collection_t          *collection,
+                          mongoc_remove_flags_t         flags,
                           const bson_t                 *selector,
                           const mongoc_write_concern_t *write_concern,
                           bson_error_t                 *error)
@@ -1237,6 +1246,18 @@ mongoc_collection_delete (mongoc_collection_t          *collection,
    }
 
    return true;
+}
+
+
+bool
+mongoc_collection_delete (mongoc_collection_t          *collection,
+                          mongoc_delete_flags_t         flags,
+                          const bson_t                 *selector,
+                          const mongoc_write_concern_t *write_concern,
+                          bson_error_t                 *error)
+{
+   return mongoc_collection_remove (collection, (mongoc_remove_flags_t)flags,
+                                    selector, write_concern, error);
 }
 
 

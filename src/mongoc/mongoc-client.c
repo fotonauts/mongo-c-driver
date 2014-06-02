@@ -288,6 +288,9 @@ mongoc_client_default_stream_initiator (const mongoc_uri_t       *uri,
 
 
    switch (host->family) {
+#if defined(AF_INET6)
+   case AF_INET6:
+#endif
    case AF_INET:
       base_stream = mongoc_client_connect_tcp (uri, host, error);
       break;
@@ -303,32 +306,34 @@ mongoc_client_default_stream_initiator (const mongoc_uri_t       *uri,
    }
 
 #ifdef MONGOC_ENABLE_SSL
-   options = mongoc_uri_get_options (uri);
-   mechanism = mongoc_uri_get_auth_mechanism (uri);
+   if (base_stream) {
+      options = mongoc_uri_get_options (uri);
+      mechanism = mongoc_uri_get_auth_mechanism (uri);
 
-   if ((bson_iter_init_find_case (&iter, options, "ssl") &&
-        bson_iter_as_bool (&iter)) ||
-       (mechanism && (0 == strcmp (mechanism, "MONGODB-X509")))) {
-      base_stream = mongoc_stream_tls_new (base_stream, &client->ssl_opts,
-                                           true);
+      if ((bson_iter_init_find_case (&iter, options, "ssl") &&
+           bson_iter_as_bool (&iter)) ||
+          (mechanism && (0 == strcmp (mechanism, "MONGODB-X509")))) {
+         base_stream = mongoc_stream_tls_new (base_stream, &client->ssl_opts,
+                                              true);
 
-      if (!base_stream) {
-         bson_set_error (error,
-                         MONGOC_ERROR_STREAM,
-                         MONGOC_ERROR_STREAM_SOCKET,
-                         "Failed initialize TLS state.");
-         return NULL;
-      }
+         if (!base_stream) {
+            bson_set_error (error,
+                            MONGOC_ERROR_STREAM,
+                            MONGOC_ERROR_STREAM_SOCKET,
+                            "Failed initialize TLS state.");
+            return NULL;
+         }
 
-      if (!mongoc_stream_tls_do_handshake (base_stream, -1) ||
-          !mongoc_stream_tls_check_cert (base_stream, host->host)) {
-         bson_set_error (error,
-                         MONGOC_ERROR_STREAM,
-                         MONGOC_ERROR_STREAM_SOCKET,
-                         "Failed to handshake and validate TLS certificate.");
-         mongoc_stream_destroy (base_stream);
-         base_stream = NULL;
-         return NULL;
+         if (!mongoc_stream_tls_do_handshake (base_stream, -1) ||
+             !mongoc_stream_tls_check_cert (base_stream, host->host)) {
+            bson_set_error (error,
+                            MONGOC_ERROR_STREAM,
+                            MONGOC_ERROR_STREAM_SOCKET,
+                            "Failed to handshake and validate TLS certificate.");
+            mongoc_stream_destroy (base_stream);
+            base_stream = NULL;
+            return NULL;
+         }
       }
    }
 #endif

@@ -65,6 +65,7 @@ _mongoc_bulk_operation_new (mongoc_client_t              *client,        /* IN *
    bulk->ordered = ordered;
    bulk->hint = hint;
    bulk->write_concern = mongoc_write_concern_copy (write_concern);
+   bulk->executed = false;
 
    if (!bulk->write_concern) {
       bulk->write_concern = mongoc_write_concern_new ();
@@ -102,7 +103,7 @@ mongoc_bulk_operation_destroy (mongoc_bulk_operation_t *bulk) /* IN */
 
 
 void
-mongoc_bulk_operation_delete (mongoc_bulk_operation_t *bulk,     /* IN */
+mongoc_bulk_operation_remove (mongoc_bulk_operation_t *bulk,     /* IN */
                               const bson_t            *selector) /* IN */
 {
    mongoc_write_command_t command = { 0 };
@@ -116,7 +117,7 @@ mongoc_bulk_operation_delete (mongoc_bulk_operation_t *bulk,     /* IN */
 
 
 void
-mongoc_bulk_operation_delete_one (mongoc_bulk_operation_t *bulk,     /* IN */
+mongoc_bulk_operation_remove_one (mongoc_bulk_operation_t *bulk,     /* IN */
                                   const bson_t            *selector) /* IN */
 {
    mongoc_write_command_t command = { 0 };
@@ -130,17 +131,48 @@ mongoc_bulk_operation_delete_one (mongoc_bulk_operation_t *bulk,     /* IN */
 
 
 void
+mongoc_bulk_operation_delete (mongoc_bulk_operation_t *bulk,
+                              const bson_t            *selector)
+{
+   mongoc_bulk_operation_remove (bulk, selector);
+}
+
+
+void
+mongoc_bulk_operation_delete_one (mongoc_bulk_operation_t *bulk,
+                                  const bson_t            *selector)
+{
+   mongoc_bulk_operation_remove_one (bulk, selector);
+}
+
+
+void
 mongoc_bulk_operation_insert (mongoc_bulk_operation_t *bulk,
                               const bson_t            *document)
 {
    mongoc_write_command_t command = { 0 };
+   mongoc_write_command_t *last;
+
+   ENTRY;
 
    bson_return_if_fail (bulk);
    bson_return_if_fail (document);
 
+   if (bulk->commands.len) {
+      last = &_mongoc_array_index (&bulk->commands,
+                                   mongoc_write_command_t,
+                                   bulk->commands.len - 1);
+      if (last->type == MONGOC_WRITE_COMMAND_INSERT) {
+         _mongoc_write_command_insert_append (last, &document, 1);
+         EXIT;
+      }
+   }
+
    _mongoc_write_command_init_insert (&command, &document, 1, bulk->ordered,
                                       false);
    _mongoc_array_append_val (&bulk->commands, command);
+
+   EXIT;
 }
 
 
@@ -243,6 +275,17 @@ mongoc_bulk_operation_execute (mongoc_bulk_operation_t *bulk,  /* IN */
    ENTRY;
 
    bson_return_val_if_fail (bulk, false);
+
+   if (bulk->executed) {
+      bson_set_error (error,
+                      MONGOC_ERROR_COMMAND,
+                      MONGOC_ERROR_COMMAND_INVALID_ARG,
+                      "mongoc_bulk_operation_execute() may only be called "
+                      "once for a bulk operation.");
+      return false;
+   }
+
+   bulk->executed = true;
 
    bson_init (reply);
 

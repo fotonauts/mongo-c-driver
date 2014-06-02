@@ -11,6 +11,7 @@ There are absolutely no guarantees of API/ABI stability at this point.
 But generally, we won't break API/ABI unless we have good reason.
 
 mongo-c-driver depends on `Libbson <https://github.com/mongodb/libbson>`_.
+Libbson will automatically be built if you do not have it installed on your system.
 
 If you are looking for the legacy C driver, it can be found in the
 `legacy branch <https://github.com/mongodb/mongo-c-driver/tree/legacy>`_.
@@ -51,13 +52,13 @@ Building from Release Tarball
 Unless you intend on contributing to the mongo-c-driver, you will want to build
 from a release tarball.
 
-The most current release is 0.94.2 which you can download here.
-`mongo-c-driver-0.94.2.tar.gz <https://github.com/mongodb/mongo-c-driver/releases/download/0.94.2/mongo-c-driver-0.94.2.tar.gz>`_.
+The most current release is 0.96.0 which you can download here.
+`mongo-c-driver-0.96.0.tar.gz <https://github.com/mongodb/mongo-c-driver/releases/download/0.96.0/mongo-c-driver-0.96.0.tar.gz>`_.
 
 To build on UNIX-like systems, do the following::
 
-  $ tar xzf mongo-c-driver-0.94.2.tar.gz
-  $ cd mongo-c-driver-0.94.2
+  $ tar xzf mongo-c-driver-0.96.0.tar.gz
+  $ cd mongo-c-driver-0.96.0
   $ ./configure
   $ make
   $ sudo make install
@@ -68,7 +69,7 @@ To see all of the options available to you during configuration, run::
 
 To build on Windows Vista or newer with Visual Studio 2010, do the following::
 
-  cd mongo-c-driver-0.94.2
+  cd mongo-c-driver-0.96.0
   cd src\libbson
   cmake -DCMAKE_INSTALL_PREFIX=C:\usr -G "Visual Studio 10 Win64" .
   msbuild.exe ALL_BUILD.vcxproj

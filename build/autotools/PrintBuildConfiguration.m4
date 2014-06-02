@@ -33,14 +33,11 @@ Build configuration:
   Code coverage support                            : ${enable_coverage}
   Cross Compiling                                  : ${enable_crosscompile}
   Fast counters                                    : ${enable_rdtscp}
-  SASL                                             : ${enable_sasl}
+  SASL                                             : ${sasl_mode}
   SSL                                              : ${enable_ssl}
   Libbson                                          : ${with_libbson}
 
 Documentation:
-  Generate man pages                               : ${mongoc_build_doc}
-  Install man pages                                : ${mongoc_install_man}
-
-Bindings:
-  Python (experimental)                            : ${ax_python_header}
+  man                                              : ${enable_man_pages}
+  HTML                                             : ${enable_html_docs}
 "

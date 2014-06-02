@@ -64,7 +64,7 @@ gen_test_user (void)
 static char *
 gen_good_uri (const char *username)
 {
-   return bson_strdup_printf("mongodb://%s:testpass@%s:27017/test",
+   return bson_strdup_printf("mongodb://%s:testpass@%s/test",
                              username,
                              MONGOC_TEST_HOST);
 }
@@ -630,6 +630,31 @@ test_server_status (void)
 
 
 static void
+test_mongoc_client_ipv6 (void)
+{
+   mongoc_client_t *client;
+   bson_error_t error;
+   bson_iter_t iter;
+   bson_t reply;
+   bool r;
+
+   client = mongoc_client_new ("mongodb://[::1]/");
+   assert (client);
+
+   r = mongoc_client_get_server_status (client, NULL, &reply, &error);
+   assert (r);
+
+   assert (bson_iter_init_find (&iter, &reply, "host"));
+   assert (bson_iter_init_find (&iter, &reply, "version"));
+   assert (bson_iter_init_find (&iter, &reply, "ok"));
+
+   bson_destroy (&reply);
+
+   mongoc_client_destroy (client);
+}
+
+
+static void
 cleanup_globals (void)
 {
    bson_free(gTestUri);
@@ -642,14 +667,18 @@ test_client_install (TestSuite *suite)
 {
    bool local;
 
-   gTestUri = bson_strdup_printf("mongodb://%s:27017/", MONGOC_TEST_HOST);
-   gTestUriWithBadPassword = bson_strdup_printf("mongodb://baduser:badpass@%s:27017/test", MONGOC_TEST_HOST);
+   gTestUri = bson_strdup_printf("mongodb://%s/", MONGOC_TEST_HOST);
+   gTestUriWithBadPassword = bson_strdup_printf("mongodb://baduser:badpass@%s/test", MONGOC_TEST_HOST);
 
    local = !getenv ("MONGOC_DISABLE_MOCK_SERVER");
 
    if (!local) {
       TestSuite_Add (suite, "/Client/wire_version", test_wire_version);
       TestSuite_Add (suite, "/Client/read_prefs", test_mongoc_client_read_prefs);
+   }
+   if (getenv ("MONGOC_CHECK_IPV6")) {
+      /* try to validate ipv6 too */
+      TestSuite_Add (suite, "/Client/ipv6", test_mongoc_client_ipv6);
    }
    TestSuite_Add (suite, "/Client/authenticate", test_mongoc_client_authenticate);
    TestSuite_Add (suite, "/Client/authenticate_failure", test_mongoc_client_authenticate_failure);
