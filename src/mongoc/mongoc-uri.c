@@ -417,7 +417,7 @@ mongoc_uri_parse_option (mongoc_uri_t *uri,
        !strcasecmp(key, "waitqueuemultiple") ||
        !strcasecmp(key, "waitqueuetimeoutms") ||
        !strcasecmp(key, "wtimeoutms")) {
-      v_int = atoi(value);
+      v_int = atoi (value);
       bson_append_int32(&uri->options, key, -1, v_int);
    } else if (!strcasecmp(key, "w")) {
       if (*value == '-' || isdigit(*value)) {
