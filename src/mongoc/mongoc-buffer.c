@@ -52,27 +52,32 @@ void
 _mongoc_buffer_init (mongoc_buffer_t   *buffer,
                      uint8_t           *buf,
                      size_t             buflen,
-                     bson_realloc_func  realloc_func)
+                     bson_realloc_func  realloc_func,
+                     void              *realloc_data)
 {
-   bson_return_if_fail(buffer);
-   bson_return_if_fail(buf || !buflen);
+   bson_return_if_fail (buffer);
+   bson_return_if_fail (buflen || !buf);
 
    if (!realloc_func) {
       realloc_func = bson_realloc_ctx;
    }
 
-   if (!buf || !buflen) {
-      buf = realloc_func (NULL, MONGOC_BUFFER_DEFAULT_SIZE, NULL);
+   if (!buflen) {
       buflen = MONGOC_BUFFER_DEFAULT_SIZE;
    }
 
-   memset(buffer, 0, sizeof *buffer);
+   if (!buf) {
+      buf = realloc_func (NULL, buflen, NULL);
+   }
+
+   memset (buffer, 0, sizeof *buffer);
 
    buffer->data = buf;
    buffer->datalen = buflen;
    buffer->len = 0;
    buffer->off = 0;
    buffer->realloc_func = realloc_func;
+   buffer->realloc_data = realloc_data;
 }
 
 
@@ -88,7 +93,7 @@ _mongoc_buffer_destroy (mongoc_buffer_t *buffer)
    bson_return_if_fail(buffer);
 
    if (buffer->data && buffer->realloc_func) {
-      buffer->realloc_func(buffer->data, 0, NULL);
+      buffer->realloc_func (buffer->data, 0, buffer->realloc_data);
    }
 
    memset(buffer, 0, sizeof *buffer);
@@ -150,6 +155,7 @@ _mongoc_buffer_append_from_stream (mongoc_buffer_t *buffer,
    bson_return_val_if_fail (size, false);
 
    BSON_ASSERT (buffer->datalen);
+   BSON_ASSERT ((buffer->datalen + size) < INT_MAX);
 
    if (!SPACE_FOR (buffer, size)) {
       if (buffer->len) {
@@ -157,19 +163,22 @@ _mongoc_buffer_append_from_stream (mongoc_buffer_t *buffer,
       }
       buffer->off = 0;
       if (!SPACE_FOR (buffer, size)) {
-         buffer->datalen = bson_next_power_of_two (size);
+         buffer->datalen = bson_next_power_of_two (size + buffer->len + buffer->off);
          buffer->data = buffer->realloc_func (buffer->data, buffer->datalen, NULL);
       }
    }
 
    buf = &buffer->data[buffer->off + buffer->len];
+
+   BSON_ASSERT ((buffer->off + buffer->len + size) <= buffer->datalen);
+
    ret = mongoc_stream_read (stream, buf, size, size, timeout_msec);
    if (ret != size) {
       bson_set_error (error,
                       MONGOC_ERROR_STREAM,
                       MONGOC_ERROR_STREAM_SOCKET,
-                      "Failed to read %u bytes from socket.",
-                      (unsigned)size);
+                      "Failed to read %"PRIu64" bytes from socket.",
+                      (uint64_t)size);
       RETURN (false);
    }
 
@@ -206,8 +215,8 @@ _mongoc_buffer_fill (mongoc_buffer_t *buffer,
    bson_return_val_if_fail(stream, false);
    bson_return_val_if_fail(min_bytes >= 0, false);
 
-   BSON_ASSERT(buffer->data);
-   BSON_ASSERT(buffer->datalen);
+   BSON_ASSERT (buffer->data);
+   BSON_ASSERT (buffer->datalen);
 
    if (min_bytes <= buffer->len) {
       RETURN (buffer->len);
@@ -222,8 +231,14 @@ _mongoc_buffer_fill (mongoc_buffer_t *buffer,
    buffer->off = 0;
 
    if (!SPACE_FOR (buffer, min_bytes)) {
+<<<<<<< HEAD
       buffer->datalen = bson_next_power_of_two (buffer->len + min_bytes);
       buffer->data = bson_realloc (buffer->data, buffer->datalen);
+=======
+      buffer->datalen = bson_next_power_of_two ((uint32_t)(buffer->len + min_bytes));
+      buffer->data = buffer->realloc_func (buffer->data, buffer->datalen,
+                                           buffer->realloc_data);
+>>>>>>> tengen-master
    }
 
    avail_bytes = buffer->datalen - buffer->len;
