@@ -1,11 +1,11 @@
 Name:           mongo-c-driver
-Version:        0.96.0
+Version:        0.96.2
 Release:        1%{?dist}
 Summary:        BSON library
 
 License:        ASL 2.0
 URL:            https://github.com/mongodb/mongo-c-driver
-Source0:        https://github.com/mongodb/mongo-c-driver/releases/download/0.96.0/mongo-c-driver-0.96.0.tar.gz
+Source0:        https://github.com/mongodb/mongo-c-driver/releases/download/0.96.2/mongo-c-driver-0.96.2.tar.gz
 BuildRequires:  automake
 BuildRequires:  libbson-devel
 BuildRequires:  cyrus-sasl-devel
@@ -32,7 +32,7 @@ developing applications that use %{name}.
 automake 
 
 %build
-%configure --disable-static --disable-silent-rules --enable-debug-symbols --docdir=%{_pkgdocdir}
+%configure --disable-static --disable-silent-rules --enable-debug-symbols --docdir=%{_pkgdocdir} --enable-debug --enable-man-pages --enable-ssl --enable-sasl --with-libbson=system --enable-optimizations
 make %{?_smp_mflags}
 
 %check
@@ -59,8 +59,12 @@ find $RPM_BUILD_ROOT -name '*.la' -exec rm -f {} ';'
 %{_libdir}/pkgconfig/libmongoc-1.0.pc
 %{_libdir}/pkgconfig/libmongoc-ssl-1.0.pc
 %{_bindir}/mongoc-stat
+%{_prefix}/share/man/man3/*
 
 %changelog
+* Thu Jun 05 2014 Christian Hergert <christian.hergert@mongodb.com> - 0.96.2-1
+- Release 0.96.2
+
 * Fri May 30 2014 Christian Hergert <christian.hergert@mongodb.com> - 0.96.0-1
 - Release 0.96.0
 
