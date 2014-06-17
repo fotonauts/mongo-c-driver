@@ -433,13 +433,16 @@ bool
 mongoc_stream_tls_do_handshake (mongoc_stream_t *stream,
                                 int32_t          timeout_msec)
 {
+   OSStatus error;
    mongoc_stream_apple_tls_t *tls = (mongoc_stream_apple_tls_t *)stream;
 
    BSON_ASSERT (tls);
 
    tls->timeout = timeout_msec;
 
-   if (SSLHandshake(tls->context) == noErr) {
+   error = SSLHandshake(tls->context);
+    printf("handshake error %d\n", (int)error);
+   if (error == noErr) {
       return true;
    }
 
@@ -578,10 +581,8 @@ mongoc_stream_tls_check_cert (mongoc_stream_t *stream,
 out:
     CFRelease(trust);
     
-    if (cfHost)
-    CFRelease(cfHost);
-    if (leaf_cert)
-    CFRelease(leaf_cert);
+    if (cfHost) CFRelease(cfHost);
+    if (leaf_cert) CFRelease(leaf_cert);
     
     return result;
 }
@@ -596,11 +597,29 @@ _mongoc_stream_tls_get_base_stream (mongoc_stream_t *stream)
 
 static OSStatus mongocSSLReadFunc(SSLConnectionRef connection, void *data, size_t *dataLength)
 {
+    mongoc_stream_apple_tls_t *tls = (mongoc_stream_apple_tls_t *)connection;
+    mongoc_iovec_t iov;
+    ssize_t readLength;
+    
+    iov.iov_base = data;
+    iov.iov_len = *dataLength;
+    readLength = mongoc_stream_readv(tls->base_stream, &iov, 1, 0, (int32_t)tls->timeout);
+    printf("read, asked: %ld got: %ld\n", *dataLength, readLength);
+    *dataLength = readLength;
     return noErr;
 }
 
 static OSStatus mongocSSLWriteFunc(SSLConnectionRef connection, const void *data, size_t *dataLength)
 {
+    mongoc_stream_apple_tls_t *tls = (mongoc_stream_apple_tls_t *)connection;
+    mongoc_iovec_t iov;
+    ssize_t writeLength;
+    
+    iov.iov_base = (char *)data;
+    iov.iov_len = *dataLength;
+    writeLength = mongoc_stream_writev(tls->base_stream, &iov, 1, (int32_t)tls->timeout);
+    printf("write, asked: %ld got: %ld\n", *dataLength, writeLength);
+    *dataLength = writeLength;
     return noErr;
 }
 
@@ -637,6 +656,7 @@ mongoc_stream_tls_new (mongoc_stream_t  *base_stream,
    BSON_ASSERT(base_stream);
    BSON_ASSERT(opt);
 
+    opt->weak_cert_validation = true;
    tls = bson_malloc0 (sizeof *tls);
    tls->base_stream = base_stream;
    tls->parent.type = MONGOC_STREAM_TLS;
@@ -650,12 +670,12 @@ mongoc_stream_tls_new (mongoc_stream_t  *base_stream,
    tls->parent.setsockopt = _mongoc_stream_tls_setsockopt;
    tls->parent.get_base_stream = _mongoc_stream_tls_get_base_stream;
    tls->weak_cert_validation = opt->weak_cert_validation;
-   tls->context = SSLCreateContext(NULL, kSSLClientSide, kSSLStreamType);
    tls->timeout = -1;
 
    tls->context = SSLCreateContext(NULL, kSSLClientSide, kSSLStreamType);
    SSLSetIOFuncs(tls->context, mongocSSLReadFunc, mongocSSLWriteFunc);
    SSLSetConnection(tls->context, tls);
+   SSLSetSessionOption(tls->context, kSSLSessionOptionBreakOnClientAuth, opt->weak_cert_validation);
 
    mongoc_counter_streams_active_inc();
 
