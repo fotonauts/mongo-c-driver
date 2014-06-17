@@ -656,7 +656,6 @@ mongoc_stream_tls_new (mongoc_stream_t  *base_stream,
    BSON_ASSERT(base_stream);
    BSON_ASSERT(opt);
 
-    opt->weak_cert_validation = true;
    tls = bson_malloc0 (sizeof *tls);
    tls->base_stream = base_stream;
    tls->parent.type = MONGOC_STREAM_TLS;
