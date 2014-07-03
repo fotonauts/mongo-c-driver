@@ -36,6 +36,83 @@
 #undef MONGOC_LOG_DOMAIN
 #define MONGOC_LOG_DOMAIN "stream-tls"
 
+#define NO_MAC_SSL 0
+
+static char charFromInt(unsigned char value)
+{
+    if (value <= 9) {
+        return '0' + value;
+    } else if (value <= 0xF) {
+        return 'A' + value - 10;
+    } else {
+        return '.';
+    }
+}
+
+static void hexLine(char *line, const unsigned char *buffer, size_t size, size_t group)
+{
+    size_t ii;
+    
+    for (ii = 0; ii < size; ii++) {
+        if (buffer[ii] <= 0x0F) {
+            line[0] = '0';
+        } else {
+            line[0] = charFromInt(buffer[ii] >> 4);
+        }
+        line++;
+        line[0] = charFromInt(buffer[ii] & 0xF);
+        line++;
+        if (group > 0 && ((ii + 1) % group) == 0) {
+            line[0] = ' ';
+            line++;
+        }
+    }
+    line[0] = 0;
+}
+
+static void charLine(char *line, const unsigned char *buffer, size_t size, size_t group)
+{
+    size_t ii;
+    
+    for (ii = 0; ii < size; ii++) {
+        if (buffer[ii] <= ' ' || buffer[ii] >= 0x80) {
+            line[0] = '.';
+        } else {
+            line[0] = buffer[ii];
+        }
+        line++;
+        if (group > 0 && ((ii + 1) % group) == 0) {
+            line[0] = ' ';
+            line++;
+        }
+    }
+    line[0] = 0;
+}
+
+static void print_buffer(const unsigned char *buffer, size_t size, size_t charPerLine)
+{
+    char line[128];
+    char padding[64];
+    size_t ii;
+    
+    for (ii = 0; ii < size; ii += charPerLine) {
+        hexLine(line, buffer + ii, ((size - ii) > charPerLine)?charPerLine:(size - ii), 4);
+        sprintf(padding, "%%-%lds", charPerLine * 2 + (charPerLine / 4));
+        printf(padding, line);
+        charLine(line, buffer + ii, ((size - ii) > charPerLine)?charPerLine:(size - ii), 4);
+        printf("%s\n", line);
+    }
+}
+
+static void print_iov(const char *action, mongoc_iovec_t *iov, size_t iovcnt)
+{
+    size_t ii;
+    
+    printf("=> %s (%ld):\n", action, iovcnt);
+    for (ii = 0; ii < iovcnt; ii++) {
+        print_buffer(iov[ii].iov_base, iov[ii].iov_len, 16);
+    }
+}
 
 /**
  * mongoc_stream_apple_tls_t:
@@ -52,7 +129,7 @@ typedef struct
    mongoc_stream_t  parent;
    mongoc_stream_t *base_stream;
    SSLContextRef    context;
-   int64_t          timeout;
+   int32_t          timeout_msec;
    bool             weak_cert_validation;
 } mongoc_stream_apple_tls_t;
 
@@ -145,9 +222,7 @@ _mongoc_stream_tls_flush (mongoc_stream_t *stream)
 {
    mongoc_stream_apple_tls_t *tls = (mongoc_stream_apple_tls_t *)stream;
 
-   BSON_ASSERT (tls);
-
-   return 0;
+   return mongoc_stream_flush(tls->base_stream);
 }
 
 
@@ -175,6 +250,29 @@ _mongoc_stream_tls_writev (mongoc_stream_t *stream,
                            size_t           iovcnt,
                            int32_t          timeout_msec)
 {
+    print_iov("write", iov, iovcnt);
+#if NO_MAC_SSL
+    mongoc_stream_apple_tls_t *tls = (mongoc_stream_apple_tls_t *)stream;
+    ssize_t writeLength;
+    
+    writeLength = mongoc_stream_writev(tls->base_stream, iov, iovcnt, timeout_msec);
+    return writeLength;
+#elif 1
+    mongoc_stream_apple_tls_t *tls = (mongoc_stream_apple_tls_t *)stream;
+    size_t ii, read_ret, total;
+    
+    total = 0;
+    for (ii = 0; ii < iovcnt; ii++) {
+        if (noErr != SSLWrite(tls->context, iov[ii].iov_base, iov[ii].iov_len, &read_ret)) {
+            print_iov("write error1 ", iov, iovcnt);
+            return -1;
+        } else {
+            total += read_ret;
+        }
+    }
+    print_iov("write ", iov, iovcnt);
+    return total;
+#else
    mongoc_stream_apple_tls_t *tls = (mongoc_stream_apple_tls_t *)stream;
    ssize_t ret = 0;
    size_t i;
@@ -188,7 +286,7 @@ _mongoc_stream_tls_writev (mongoc_stream_t *stream,
    BSON_ASSERT (iov);
    BSON_ASSERT (iovcnt);
 
-   tls->timeout = timeout_msec;
+   tls->timeout_msec = timeout_msec;
 
    if (timeout_msec >= 0) {
       expire = bson_get_monotonic_time () + (timeout_msec * 1000UL);
@@ -201,6 +299,7 @@ _mongoc_stream_tls_writev (mongoc_stream_t *stream,
           OSStatus status;
           
           status = SSLWrite(tls->context, (char *)iov[i].iov_base + iov_pos, (int)(iov[i].iov_len - iov_pos), &write_ret);
+//          printf("SSL did write: asked %d read %ld status %d (i %ld iov_len %ld iov_pos %ld)\n", (int)(iov[i].iov_len - iov_pos), write_ret, (int)status, i, iov[i].iov_len, iov_pos);
 
           if (status != noErr) {
               return -1;
@@ -220,9 +319,9 @@ _mongoc_stream_tls_writev (mongoc_stream_t *stream,
                   return -1;
                }
 
-               tls->timeout = 0;
+               tls->timeout_msec = 0;
             } else {
-               tls->timeout = expire - now;
+               tls->timeout_msec = (int32_t)(expire - now);
             }
          }
 
@@ -236,6 +335,7 @@ _mongoc_stream_tls_writev (mongoc_stream_t *stream,
    }
 
    return ret;
+#endif
 }
 
 
@@ -264,6 +364,29 @@ _mongoc_stream_tls_readv (mongoc_stream_t *stream,
                           size_t           min_bytes,
                           int32_t          timeout_msec)
 {
+#if NO_MAC_SSL
+    mongoc_stream_apple_tls_t *tls = (mongoc_stream_apple_tls_t *)stream;
+    ssize_t readLength;
+    
+    readLength = mongoc_stream_readv(tls->base_stream, iov, iovcnt, min_bytes, timeout_msec);
+    print_iov("read", iov, iovcnt);
+    return readLength;
+#elif 1
+    mongoc_stream_apple_tls_t *tls = (mongoc_stream_apple_tls_t *)stream;
+    size_t ii, read_ret, total;
+    
+    total = 0;
+    for (ii = 0; ii < iovcnt; ii++) {
+        if (noErr != SSLRead(tls->context, iov[ii].iov_base, iov[ii].iov_len, &read_ret)) {
+            print_iov("read error1 ", iov, iovcnt);
+            return -1;
+        } else {
+            total += read_ret;
+        }
+    }
+    print_iov("read", iov, iovcnt);
+    return total;
+#else
    mongoc_stream_apple_tls_t *tls = (mongoc_stream_apple_tls_t *)stream;
    ssize_t ret = 0;
    size_t i;
@@ -276,7 +399,7 @@ _mongoc_stream_tls_readv (mongoc_stream_t *stream,
    BSON_ASSERT (iov);
    BSON_ASSERT (iovcnt);
 
-   tls->timeout = timeout_msec;
+   tls->timeout_msec = timeout_msec;
 
    if (timeout_msec >= 0) {
       expire = bson_get_monotonic_time () + (timeout_msec * 1000UL);
@@ -289,8 +412,10 @@ _mongoc_stream_tls_readv (mongoc_stream_t *stream,
           OSStatus status;
           
           status = SSLRead(tls->context, (char *)iov[i].iov_base + iov_pos, (int)(iov[i].iov_len - iov_pos), &read_ret);
+          printf("SSL did read: asked %d read %ld status %d\n", (int)(iov[i].iov_len - iov_pos), read_ret, (int)status);
 
          if (status != noErr) {
+            print_iov("read error1 ", iov, iovcnt);
             return -1;
          }
 
@@ -305,12 +430,13 @@ _mongoc_stream_tls_readv (mongoc_stream_t *stream,
 #else
                   errno = ETIMEDOUT;
 #endif
+                  print_iov("read error2 ", iov, iovcnt);
                   return -1;
                }
 
-               tls->timeout = 0;
+               tls->timeout_msec = 0;
             } else {
-               tls->timeout = expire - now;
+               tls->timeout_msec = (int32_t)(expire - now);
             }
          }
 
@@ -318,6 +444,7 @@ _mongoc_stream_tls_readv (mongoc_stream_t *stream,
 
          if ((size_t)ret >= min_bytes) {
             mongoc_counter_streams_ingress_add(ret);
+            print_iov("read error3 ", iov, iovcnt);
             return ret;
          }
 
@@ -329,7 +456,9 @@ _mongoc_stream_tls_readv (mongoc_stream_t *stream,
       mongoc_counter_streams_ingress_add(ret);
    }
 
+    print_iov("read", iov, iovcnt);
    return ret;
+#endif
 }
 
 
@@ -433,12 +562,15 @@ bool
 mongoc_stream_tls_do_handshake (mongoc_stream_t *stream,
                                 int32_t          timeout_msec)
 {
+#if NO_MAC_SSL
+   return true;
+#else
    OSStatus error;
    mongoc_stream_apple_tls_t *tls = (mongoc_stream_apple_tls_t *)stream;
 
    BSON_ASSERT (tls);
 
-   tls->timeout = timeout_msec;
+   tls->timeout_msec = timeout_msec;
 
    error = SSLHandshake(tls->context);
     printf("handshake error %d\n", (int)error);
@@ -455,6 +587,7 @@ mongoc_stream_tls_do_handshake (mongoc_stream_t *stream,
    }
 
    return false;
+#endif
 }
 
 static CFDataRef
@@ -523,6 +656,9 @@ bool
 mongoc_stream_tls_check_cert (mongoc_stream_t *stream,
                               const char      *host)
 {
+#if NO_MAC_SSL
+   return true;
+#else
    mongoc_stream_apple_tls_t *tls = (mongoc_stream_apple_tls_t *)stream;
 
    BSON_ASSERT (tls);
@@ -585,6 +721,7 @@ out:
     if (leaf_cert) CFRelease(leaf_cert);
     
     return result;
+#endif
 }
 
 
@@ -603,8 +740,8 @@ static OSStatus mongocSSLReadFunc(SSLConnectionRef connection, void *data, size_
     
     iov.iov_base = data;
     iov.iov_len = *dataLength;
-    readLength = mongoc_stream_readv(tls->base_stream, &iov, 1, 0, (int32_t)tls->timeout);
-    printf("read, asked: %ld got: %ld\n", *dataLength, readLength);
+    readLength = mongoc_stream_readv(tls->base_stream, &iov, 1, 0, tls->timeout_msec);
+//    printf("SSL wants to read, asked: %ld got: %ld\n", *dataLength, readLength);
     *dataLength = readLength;
     return noErr;
 }
@@ -617,8 +754,8 @@ static OSStatus mongocSSLWriteFunc(SSLConnectionRef connection, const void *data
     
     iov.iov_base = (char *)data;
     iov.iov_len = *dataLength;
-    writeLength = mongoc_stream_writev(tls->base_stream, &iov, 1, (int32_t)tls->timeout);
-    printf("write, asked: %ld got: %ld\n", *dataLength, writeLength);
+    writeLength = mongoc_stream_writev(tls->base_stream, &iov, 1, tls->timeout_msec);
+//    printf("SSL wants to write, asked: %ld got: %ld\n", *dataLength, writeLength);
     *dataLength = writeLength;
     return noErr;
 }
@@ -669,7 +806,7 @@ mongoc_stream_tls_new (mongoc_stream_t  *base_stream,
    tls->parent.setsockopt = _mongoc_stream_tls_setsockopt;
    tls->parent.get_base_stream = _mongoc_stream_tls_get_base_stream;
    tls->weak_cert_validation = opt->weak_cert_validation;
-   tls->timeout = -1;
+   tls->timeout_msec = -1;
 
    tls->context = SSLCreateContext(NULL, kSSLClientSide, kSSLStreamType);
    SSLSetIOFuncs(tls->context, mongocSSLReadFunc, mongocSSLWriteFunc);
