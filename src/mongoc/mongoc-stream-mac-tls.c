@@ -317,6 +317,12 @@ _mongoc_stream_tls_readv (mongoc_stream_t *stream,
             return -1;
         } else {
             total += read_ret;
+            if (read_ret >= min_bytes) {
+                min_bytes = 0;
+                break;
+            } else {
+                min_bytes -= read_ret;
+            }
         }
     }
     return total;
