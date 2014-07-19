@@ -853,7 +853,7 @@ _mongoc_write_result_append_upsert (mongoc_write_result_t *result,
    bson_t child;
    const char *keyptr = NULL;
    char key[12];
-   int len;
+   size_t len;
 
    BSON_ASSERT (result);
    BSON_ASSERT (value);
@@ -1004,7 +1004,7 @@ _mongoc_write_result_merge_arrays (mongoc_write_result_t *result, /* IN */
    bson_t child;
    const char *keyptr = NULL;
    char key[12];
-   int len;
+   size_t len;
 
    ENTRY;
 
