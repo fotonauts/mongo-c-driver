@@ -38,7 +38,6 @@ m4_include([build/autotools/FindDependencies.m4])
 m4_include([build/autotools/AutoHarden.m4])
 m4_include([build/autotools/MaintainerFlags.m4])
 m4_include([build/autotools/Optimizations.m4])
-m4_include([build/autotools/Python.m4])
 
 # We would put AM_INIT_AUTOMAKE into SetupAutomake.m4, but seems to cause
 # autoconf errors.
@@ -48,6 +47,7 @@ m4_include([build/autotools/SetupAutomake.m4])
 
 AC_CONFIG_FILES([
     Makefile
+    build/version
     src/libmongoc-1.0.pc
     src/libmongoc-ssl-1.0.pc
     src/mongoc/mongoc-config.h

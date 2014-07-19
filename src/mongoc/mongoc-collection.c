@@ -18,6 +18,7 @@
 #include <bcon.h>
 #include <stdio.h>
 
+#include "mongoc-bulk-operation.h"
 #include "mongoc-bulk-operation-private.h"
 #include "mongoc-client-private.h"
 #include "mongoc-collection.h"
@@ -462,6 +463,8 @@ mongoc_collection_command (mongoc_collection_t       *collection,
                            const bson_t              *fields,
                            const mongoc_read_prefs_t *read_prefs)
 {
+   char ns[MONGOC_NAMESPACE_MAX];
+
    BSON_ASSERT (collection);
    BSON_ASSERT (query);
 
@@ -471,7 +474,14 @@ mongoc_collection_command (mongoc_collection_t       *collection,
 
    bson_clear (&collection->gle);
 
-   return mongoc_client_command (collection->client, collection->db, flags,
+   if (NULL == strstr (collection->collection, "$cmd")) {
+      bson_snprintf (ns, sizeof ns, "%s", collection->db);
+   } else {
+      bson_snprintf (ns, sizeof ns, "%s.%s",
+                     collection->db, collection->collection);
+   }
+
+   return mongoc_client_command (collection->client, ns, flags,
                                  skip, limit, batch_size, query, fields, read_prefs);
 }
 
@@ -788,7 +798,6 @@ mongoc_collection_create_index (mongoc_collection_t      *collection,
 
    bson_return_val_if_fail (collection, false);
    bson_return_val_if_fail (keys, false);
-   bson_return_val_if_fail (opt, false);
 
    def_opt = mongoc_index_opt_get_default ();
    opt = opt ? opt : def_opt;
@@ -990,6 +999,10 @@ mongoc_collection_insert (mongoc_collection_t          *collection,
    bson_return_val_if_fail (document, false);
 
    bson_clear (&collection->gle);
+
+   if (!write_concern) {
+      write_concern = collection->write_concern;
+   }
 
    if (!(flags & MONGOC_INSERT_NO_VALIDATE)) {
       if (!bson_validate (document,
@@ -1208,11 +1221,15 @@ mongoc_collection_remove (mongoc_collection_t          *collection,
                           const mongoc_write_concern_t *write_concern,
                           bson_error_t                 *error)
 {
-   uint32_t hint;
-   mongoc_rpc_t rpc;
+   mongoc_write_command_t command;
+   mongoc_write_result_t result;
+   bool multi;
+   bool ret;
 
-   bson_return_val_if_fail(collection, false);
-   bson_return_val_if_fail(selector, false);
+   ENTRY;
+
+   bson_return_val_if_fail (collection, false);
+   bson_return_val_if_fail (selector, false);
 
    bson_clear (&collection->gle);
 
@@ -1220,32 +1237,22 @@ mongoc_collection_remove (mongoc_collection_t          *collection,
       write_concern = collection->write_concern;
    }
 
-   if (!_mongoc_client_warm_up (collection->client, error)) {
-      return false;
-   }
+   multi = !(flags & MONGOC_REMOVE_SINGLE_REMOVE);
 
-   rpc.delete.msg_len = 0;
-   rpc.delete.request_id = 0;
-   rpc.delete.response_to = 0;
-   rpc.delete.opcode = MONGOC_OPCODE_DELETE;
-   rpc.delete.zero = 0;
-   rpc.delete.collection = collection->ns;
-   rpc.delete.flags = flags;
-   rpc.delete.selector = bson_get_data(selector);
+   _mongoc_write_result_init (&result);
+   _mongoc_write_command_init_delete (&command, selector, multi, true);
 
-   if (!(hint = _mongoc_client_sendv(collection->client, &rpc, 1, 0,
-                                     write_concern, NULL, error))) {
-      return false;
-   }
+   _mongoc_write_command_execute (&command, collection->client, 0,
+                                  collection->db, collection->collection,
+                                  write_concern, &result);
 
-   if (_mongoc_write_concern_has_gle(write_concern)) {
-      if (!_mongoc_client_recv_gle (collection->client, hint,
-                                    &collection->gle, error)) {
-         return false;
-      }
-   }
+   collection->gle = bson_new ();
+   ret = _mongoc_write_result_complete (&result, collection->gle, error);
 
-   return true;
+   _mongoc_write_result_destroy (&result);
+   _mongoc_write_command_destroy (&command);
+
+   RETURN (ret);
 }
 
 

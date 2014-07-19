@@ -2148,6 +2148,8 @@ _mongoc_cluster_reconnect_sharded_cluster (mongoc_cluster_t *cluster,
       RETURN (false);
    }
 
+   _mongoc_cluster_update_state (cluster);
+
    RETURN (true);
 }
 
@@ -2176,10 +2178,26 @@ _mongoc_cluster_reconnect (mongoc_cluster_t *cluster,
                            bson_error_t     *error)
 {
    bool ret;
+   int i;
 
    ENTRY;
 
    bson_return_val_if_fail (cluster, false);
+
+   /*
+    * Close any lingering connections.
+    *
+    * TODO: We could be better about reusing connections.
+    */
+   for (i = 0; i < MONGOC_CLUSTER_MAX_NODES; i++) {
+       if (cluster->nodes [i].stream) {
+           mongoc_stream_close (cluster->nodes [i].stream);
+           mongoc_stream_destroy (cluster->nodes [i].stream);
+           cluster->nodes [i].stream = NULL;
+       }
+   }
+
+   _mongoc_cluster_update_state (cluster);
 
    switch (cluster->mode) {
    case MONGOC_CLUSTER_DIRECT:
@@ -2745,7 +2763,7 @@ _mongoc_cluster_try_recv (mongoc_cluster_t *cluster,
     */
    memcpy (&msg_len, &buffer->data[buffer->off + pos], 4);
    msg_len = BSON_UINT32_FROM_LE (msg_len);
-   if ((msg_len < 16) || (msg_len > cluster->max_bson_size)) {
+   if ((msg_len < 16) || (msg_len > cluster->max_msg_size)) {
       bson_set_error (error,
                       MONGOC_ERROR_PROTOCOL,
                       MONGOC_ERROR_PROTOCOL_INVALID_REPLY,

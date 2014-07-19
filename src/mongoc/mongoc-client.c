@@ -81,7 +81,7 @@ mongoc_client_connect_tcp (const mongoc_uri_t       *uri,
                            const mongoc_host_list_t *host,
                            bson_error_t             *error)
 {
-   mongoc_socket_t *sock;
+   mongoc_socket_t *sock = NULL;
    struct addrinfo hints;
    struct addrinfo *result, *rp;
    int32_t connecttimeoutms = DEFAULT_CONNECTTIMEOUTMS;
@@ -118,6 +118,7 @@ mongoc_client_connect_tcp (const mongoc_uri_t       *uri,
    s = getaddrinfo (host->host, portstr, &hints, &result);
 
    if (s != 0) {
+      mongoc_counter_dns_failure_inc ();
       bson_set_error(error,
                      MONGOC_ERROR_STREAM,
                      MONGOC_ERROR_STREAM_NAME_RESOLUTION,
@@ -125,6 +126,8 @@ mongoc_client_connect_tcp (const mongoc_uri_t       *uri,
                      host->host);
       RETURN (NULL);
    }
+
+   mongoc_counter_dns_success_inc ();
 
    for (rp = result; rp; rp = rp->ai_next) {
       /*
@@ -1158,10 +1161,17 @@ mongoc_client_command (mongoc_client_t           *client,
       read_prefs = client->read_prefs;
    }
 
-   bson_snprintf (ns, sizeof ns, "%s.$cmd", db_name);
+   /*
+    * Allow a caller to provide a fully qualified namespace. Otherwise,
+    * querying something like "$cmd.sys.inprog" is not possible.
+    */
+   if (NULL == strstr (db_name, "$cmd")) {
+      bson_snprintf (ns, sizeof ns, "%s.$cmd", db_name);
+      db_name = ns;
+   }
 
-   return _mongoc_cursor_new (client, ns, flags, skip, limit, batch_size, true,
-                              query, fields, read_prefs);
+   return _mongoc_cursor_new (client, db_name, flags, skip, limit, batch_size,
+                              true, query, fields, read_prefs);
 }
 
 
@@ -1314,4 +1324,23 @@ mongoc_client_get_server_status (mongoc_client_t     *client,     /* IN */
    bson_destroy (&cmd);
 
    return ret;
+}
+
+
+void
+mongoc_client_set_stream_initiator (mongoc_client_t           *client,
+                                    mongoc_stream_initiator_t  initiator,
+                                    void                      *user_data)
+{
+   bson_return_if_fail (client);
+
+   if (!initiator) {
+      initiator = mongoc_client_default_stream_initiator;
+      user_data = client;
+   } else {
+      MONGOC_DEBUG ("Using custom stream initiator.");
+   }
+
+   client->initiator = initiator;
+   client->initiator_data = user_data;
 }

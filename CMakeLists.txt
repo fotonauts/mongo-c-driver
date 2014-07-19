@@ -12,10 +12,10 @@ include(FindBSON REQUIRED)
 set (SOURCE_DIR "${PROJECT_SOURCE_DIR}/")
 
 set (MONGOC_MAJOR_VERSION 0)
-set (MONGOC_MINOR_VERSION 96)
-set (MONGOC_MICRO_VERSION 3)
+set (MONGOC_MINOR_VERSION 98)
+set (MONGOC_MICRO_VERSION 1)
 set (MONGOC_API_VERSION 1.0)
-set (MONGOC_VERSION 0.96.3)
+set (MONGOC_VERSION 0.98.1)
 
 set (CPACK_RESOURCE_FILE_LICENSE "${SOURCE_DIR}/COPYING")
 set (CPACK_PACKAGE_VERSION_MAJOR ${MONGOC_MAJOR_VERSION})
@@ -244,8 +244,6 @@ mongoc_add_test(test-sharded-cluster FALSE
    ${SOURCE_DIR}/tests/test-sharded-cluster.c
    ${SOURCE_DIR}/tests/mongoc-tests.c
    ${SOURCE_DIR}/tests/ha-test.c)
-mongoc_add_test(echo-server FALSE
-   ${SOURCE_DIR}/tests/echo-server.c)
 
 mongoc_add_test(test-libmongoc FALSE ${test-libmongoc-sources})
 add_test(NAME test-libmongoc COMMAND test-libmongoc -f -p)

@@ -61,7 +61,10 @@ int main (int argc, char *argv[])
             break;
          }
 
-         fwrite(iov.iov_base, r, 1, stdout);
+         if (fwrite (iov.iov_base, r, 1, stdout) != r) {
+            MONGOC_ERROR ("Failed to write to stdout. Exiting.\n");
+            exit (1);
+         }
       }
 
       mongoc_stream_destroy (stream);
@@ -108,6 +111,8 @@ int main (int argc, char *argv[])
 
    mongoc_gridfs_destroy (gridfs);
    mongoc_client_destroy (client);
+
+   mongoc_cleanup ();
 
    return 0;
 }

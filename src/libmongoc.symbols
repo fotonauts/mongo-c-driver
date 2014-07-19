@@ -3,9 +3,15 @@ mongoc_bulk_operation_delete_one
 mongoc_bulk_operation_destroy
 mongoc_bulk_operation_execute
 mongoc_bulk_operation_insert
+mongoc_bulk_operation_new
 mongoc_bulk_operation_remove
 mongoc_bulk_operation_remove_one
 mongoc_bulk_operation_replace_one
+mongoc_bulk_operation_set_client
+mongoc_bulk_operation_set_collection
+mongoc_bulk_operation_set_database
+mongoc_bulk_operation_set_hint
+mongoc_bulk_operation_set_write_concern
 mongoc_bulk_operation_update
 mongoc_bulk_operation_update_one
 mongoc_cleanup
@@ -32,6 +38,7 @@ mongoc_client_pool_set_ssl_opts
 mongoc_client_pool_try_pop
 mongoc_client_set_read_prefs
 mongoc_client_set_ssl_opts
+mongoc_client_set_stream_initiator
 mongoc_client_set_write_concern
 mongoc_collection_aggregate
 mongoc_collection_command
@@ -65,6 +72,7 @@ mongoc_cursor_clone
 mongoc_cursor_current
 mongoc_cursor_destroy
 mongoc_cursor_error
+mongoc_cursor_get_hint
 mongoc_cursor_get_host
 mongoc_cursor_is_alive
 mongoc_cursor_more
@@ -103,6 +111,7 @@ mongoc_gridfs_file_list_destroy
 mongoc_gridfs_file_list_error
 mongoc_gridfs_file_list_next
 mongoc_gridfs_file_readv
+mongoc_gridfs_file_remove
 mongoc_gridfs_file_save
 mongoc_gridfs_file_seek
 mongoc_gridfs_file_set_aliases
@@ -117,6 +126,7 @@ mongoc_gridfs_find_one
 mongoc_gridfs_find_one_by_filename
 mongoc_gridfs_get_chunks
 mongoc_gridfs_get_files
+mongoc_gridfs_remove_by_filename
 mongoc_index_opt_get_default
 mongoc_index_opt_init
 mongoc_init
@@ -153,7 +163,6 @@ mongoc_socket_setsockopt
 mongoc_ssl_opt_get_default
 mongoc_stream_buffered_new
 mongoc_stream_close
-mongoc_stream_cork
 mongoc_stream_destroy
 mongoc_stream_file_get_fd
 mongoc_stream_file_new
@@ -169,7 +178,6 @@ mongoc_stream_socket_new
 mongoc_stream_tls_check_cert
 mongoc_stream_tls_do_handshake
 mongoc_stream_tls_new
-mongoc_stream_uncork
 mongoc_stream_writev
 mongoc_uri_copy
 mongoc_uri_destroy

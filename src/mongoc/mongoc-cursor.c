@@ -139,6 +139,18 @@ _mongoc_cursor_new (mongoc_client_t           *client,
    cursor = bson_malloc0 (sizeof *cursor);
 
    /*
+    * DRIVERS-63:
+    *
+    * If this is a command and we have read_prefs other than PRIMARY, we need to
+    * set SlaveOK bit in the protocol.
+    */
+   if (is_command &&
+       read_prefs &&
+       (mongoc_read_prefs_get_mode (read_prefs) != MONGOC_READ_PRIMARY)) {
+      flags |= MONGOC_QUERY_SLAVE_OK;
+   }
+
+   /*
     * CDRIVER-244:
     *
     * If this is a command, we need to verify we can send it to the location
@@ -180,9 +192,12 @@ _mongoc_cursor_new (mongoc_client_t           *client,
    cursor->limit = limit;
    cursor->batch_size = batch_size;
    cursor->is_command = is_command;
+   cursor->has_fields = !!fields;
 
 #define MARK_FAILED(c) \
    do { \
+      bson_init (&(c)->query); \
+      bson_init (&(c)->fields); \
       (c)->failed = true; \
       (c)->done = true; \
       (c)->end_of_event = true; \
@@ -231,6 +246,33 @@ _mongoc_cursor_new (mongoc_client_t           *client,
                          MONGOC_ERROR_CURSOR,
                          MONGOC_ERROR_CURSOR_INVALID_CURSOR,
                          "$snapshot must be a boolean.");
+         MARK_FAILED (cursor);
+         GOTO (finish);
+      }
+   }
+
+   /*
+    * Check if we have a mixed top-level query and dollar keys such
+    * as $orderby. This is not allowed (you must use {$query:{}}.
+    */
+   if (bson_iter_init (&iter, query)) {
+      bool found_dollar = false;
+      bool found_non_dollar = false;
+
+      while (bson_iter_next (&iter)) {
+         if (bson_iter_key (&iter)[0] == '$') {
+            found_dollar = true;
+         } else {
+            found_non_dollar = true;
+         }
+      }
+
+      if (found_dollar && found_non_dollar) {
+         bson_set_error (&cursor->error,
+                         MONGOC_ERROR_CURSOR,
+                         MONGOC_ERROR_CURSOR_INVALID_CURSOR,
+                         "Cannot mix top-level query with dollar keys such "
+                         "as $orderby. Use {$query: {},...} instead.");
          MARK_FAILED (cursor);
          GOTO (finish);
       }
@@ -424,14 +466,15 @@ _mongoc_cursor_unwrap_failure (mongoc_cursor_t *cursor)
       }
       RETURN(true);
    } else if (cursor->is_command) {
-      if (_mongoc_rpc_reply_get_first(&cursor->rpc.reply, &b)) {
-         if ( bson_iter_init_find(&iter, &b, "ok") &&
-              bson_iter_as_bool(&iter)) {
-            RETURN (false);
-         } else {
-            _mongoc_cursor_populate_error(cursor, &b, &cursor->error);
-            bson_destroy(&b);
-            RETURN (true);
+      if (_mongoc_rpc_reply_get_first (&cursor->rpc.reply, &b)) {
+         if (bson_iter_init_find (&iter, &b, "ok")) {
+            if (bson_iter_as_bool (&iter)) {
+               RETURN (false);
+            } else {
+               _mongoc_cursor_populate_error (cursor, &b, &cursor->error);
+               bson_destroy (&b);
+               RETURN (true);
+            }
          }
       } else {
          bson_set_error (&cursor->error,
@@ -483,7 +526,12 @@ _mongoc_cursor_query (mongoc_cursor_t *cursor)
       rpc.query.n_return = _mongoc_n_return(cursor);
    }
    rpc.query.query = bson_get_data(&cursor->query);
-   rpc.query.fields = bson_get_data(&cursor->fields);
+
+   if (cursor->has_fields) {
+      rpc.query.fields = bson_get_data (&cursor->fields);
+   } else {
+      rpc.query.fields = NULL;
+   }
 
    if (!(hint = _mongoc_client_sendv (cursor->client, &rpc, 1,
                                       cursor->hint, NULL,
@@ -729,6 +777,14 @@ mongoc_cursor_next (mongoc_cursor_t  *cursor,
    BSON_ASSERT(bson);
 
    TRACE ("cursor_id(%"PRId64")", cursor->rpc.reply.cursor_id);
+
+   if (bson) {
+      *bson = NULL;
+   }
+
+   if (cursor->failed) {
+      return false;
+   }
 
    if (cursor->iface.next) {
       ret = cursor->iface.next(cursor, bson);
@@ -1005,4 +1061,13 @@ mongoc_cursor_current (const mongoc_cursor_t *cursor) /* IN */
    bson_return_val_if_fail (cursor, NULL);
 
    return cursor->current;
+}
+
+
+uint32_t
+mongoc_cursor_get_hint (const mongoc_cursor_t *cursor)
+{
+   bson_return_val_if_fail (cursor, 0);
+
+   return cursor->hint;
 }

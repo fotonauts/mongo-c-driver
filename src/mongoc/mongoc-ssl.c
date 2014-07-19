@@ -84,6 +84,18 @@ _mongoc_ssl_init (void)
    ERR_load_BIO_strings ();
    OpenSSL_add_all_algorithms ();
    _mongoc_ssl_thread_startup ();
+
+   /*
+    * Ensure we also load the ciphers now from the primary thread
+    * or we can run into some weirdness on 64-bit Solaris 10 on
+    * SPARC with openssl 0.9.7.
+    */
+   ctx = SSL_CTX_new (SSLv23_method ());
+   if (!ctx) {
+      MONGOC_ERROR ("Failed to initialize OpenSSL.");
+   }
+
+   SSL_CTX_free (ctx);
 #endif
 }
 
