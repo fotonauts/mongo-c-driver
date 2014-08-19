@@ -1534,7 +1534,7 @@ _mongoc_cluster_auth_node_plain (mongoc_cluster_t      *cluster,
 
    str = bson_strdup_printf ("%c%s%c%s", '\0', username, '\0', password);
    len = strlen (username) + strlen (password) + 2;
-   ret = sasl_encode64 (str, len, buf, sizeof buf, &buflen);
+   ret = sasl_encode64 (str, (unsigned)len, buf, sizeof buf, &buflen);
    bson_free (str);
 
    if (ret != SASL_OK) {
