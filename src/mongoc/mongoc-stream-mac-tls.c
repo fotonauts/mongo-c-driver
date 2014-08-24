@@ -33,9 +33,6 @@
 #include "mongoc-log.h"
 
 
-#undef MONGOC_LOG_DOMAIN
-#define MONGOC_LOG_DOMAIN "stream-tls"
-
 static char charFromInt(unsigned char value)
 {
     if (value <= 9) {
@@ -607,7 +604,7 @@ mongoc_stream_tls_new (mongoc_stream_t  *base_stream,
 
    tls->context = SSLCreateContext(NULL, kSSLClientSide, kSSLStreamType);
    SSLSetIOFuncs(tls->context, mongocSSLReadFunc, mongocSSLWriteFunc);
-    SSLSetSessionOption(tls->context, kSSLSessionOptionBreakOnClientAuth, opt->weak_cert_validation);
+   SSLSetSessionOption(tls->context, kSSLSessionOptionBreakOnClientAuth, opt->weak_cert_validation);
    SSLSetConnection(tls->context, tls);
 
    mongoc_counter_streams_active_inc();
