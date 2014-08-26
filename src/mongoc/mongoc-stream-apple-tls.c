@@ -261,11 +261,14 @@ _mongoc_stream_tls_writev (mongoc_stream_t *stream,
 {
     mongoc_stream_apple_tls_t *tls = (mongoc_stream_apple_tls_t *)stream;
     size_t ii, read_ret, total;
+    OSStatus error;
     
     tls->timeout_msec = timeout_msec;
     total = 0;
     for (ii = 0; ii < iovcnt; ii++) {
-        if (noErr != SSLWrite(tls->context, iov[ii].iov_base, iov[ii].iov_len, &read_ret)) {
+        error = SSLWrite(tls->context, iov[ii].iov_base, iov[ii].iov_len, &read_ret);
+        if (noErr != error) {
+            printf("write error %d errno %d\n", (int)error, errno);
             return -1;
         } else {
             total += read_ret;
@@ -302,6 +305,7 @@ _mongoc_stream_tls_readv (mongoc_stream_t *stream,
 {
     mongoc_stream_apple_tls_t *tls = (mongoc_stream_apple_tls_t *)stream;
     size_t ii, read_ret, total;
+    OSStatus error;
     
     total = 0;
     for (ii = 0; ii < iovcnt; ii++) {
@@ -310,8 +314,9 @@ _mongoc_stream_tls_readv (mongoc_stream_t *stream,
         if (size > iov[ii].iov_len) {
             size = iov[ii].iov_len;
         }
-        if (noErr != SSLRead(tls->context, iov[ii].iov_base, size, &read_ret)) {
-            return -1;
+        error = SSLRead(tls->context, iov[ii].iov_base, size, &read_ret);
+        if (noErr != error) {
+            printf("read error %d errno %d\n", (int)error, errno);
         } else {
             total += read_ret;
             if (read_ret >= min_bytes) {
@@ -538,7 +543,7 @@ static OSStatus mongocSSLReadFunc(SSLConnectionRef connection, void *data, size_
     
     iov.iov_base = data;
     iov.iov_len = *dataLength;
-    readLength = mongoc_stream_readv(tls->base_stream, &iov, 1, 0, tls->timeout_msec);
+    readLength = mongoc_stream_readv(tls->base_stream, &iov, 1, *dataLength, tls->timeout_msec);
     *dataLength = readLength;
     return noErr;
 }
