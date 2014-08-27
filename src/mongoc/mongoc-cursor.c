@@ -88,16 +88,8 @@ _mongoc_n_return (mongoc_cursor_t * cursor)
       /* calculate remaining */
       uint32_t remaining = cursor->limit - cursor->count;
 
-      /* if we had a batch size */
-      if (r) {
-         /* use min of batch or remaining */
-         r = MIN(r, (int32_t)remaining);
-      } else {
-         /* if we didn't, just use the remaining */
-         r = remaining;
-      }
-
-      r = -r;
+      /* use min of batch or remaining */
+      r = MIN(r, (int32_t)remaining);
    }
 
    return r;
