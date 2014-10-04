@@ -32,6 +32,11 @@
 #include "mongoc-trace.h"
 #include "mongoc-log.h"
 
+#undef MONGOC_LOG_DOMAIN
+#define MONGOC_LOG_DOMAIN "apple_ssl"
+
+#define SSL_LOG             0
+#define FAKE_SSL            0
 
 static char charFromInt(unsigned char value)
 {
@@ -117,7 +122,10 @@ static void print_iov(const char *action, mongoc_iovec_t *iov, size_t iovcnt)
     
     printf("=> %s (%ld):\n", action, iovcnt);
     for (ii = 0; ii < iovcnt; ii++) {
-        print_buffer("iov", iov[ii].iov_base, iov[ii].iov_len, 16);
+        char buffer[256];
+        
+        sprintf(buffer, "iov #%zu (%zu)", ii, iov[ii].iov_len);
+        print_buffer(buffer, iov[ii].iov_base, iov[ii].iov_len, 16);
         total += iov[ii].iov_len;
     }
     printf("total %ld\n", total);
@@ -260,20 +268,29 @@ _mongoc_stream_tls_writev (mongoc_stream_t *stream,
                            int32_t          timeout_msec)
 {
     mongoc_stream_apple_tls_t *tls = (mongoc_stream_apple_tls_t *)stream;
-    size_t ii, read_ret, total;
+    size_t total;
+    
+#if FAKE_SSL
+    total = mongoc_stream_writev(tls->base_stream, iov, iovcnt, timeout_msec);
+#else
     OSStatus error;
+    size_t ii, read_ret;
     
     tls->timeout_msec = timeout_msec;
     total = 0;
     for (ii = 0; ii < iovcnt; ii++) {
         error = SSLWrite(tls->context, iov[ii].iov_base, iov[ii].iov_len, &read_ret);
         if (noErr != error) {
-            printf("write error %d errno %d\n", (int)error, errno);
+            MONGOC_ERROR("write error %d errno %d", (int)error, errno);
             return -1;
         } else {
             total += read_ret;
         }
     }
+#endif
+#if SSL_LOG
+    print_iov("write" , iov, iovcnt);
+#endif
     return total;
 }
 
@@ -304,29 +321,47 @@ _mongoc_stream_tls_readv (mongoc_stream_t *stream,
                           int32_t          timeout_msec)
 {
     mongoc_stream_apple_tls_t *tls = (mongoc_stream_apple_tls_t *)stream;
-    size_t ii, read_ret, total;
+    size_t total;
+    
+#if FAKE_SSL
+    total = mongoc_stream_readv(tls->base_stream, iov, iovcnt, min_bytes, timeout_msec);
+#else
+    size_t ii, read_ret;
     OSStatus error;
     
     total = 0;
     for (ii = 0; ii < iovcnt; ii++) {
-        size_t size = min_bytes;
+        size_t read_for_iov = 0;
         
-        if (size > iov[ii].iov_len) {
-            size = iov[ii].iov_len;
-        }
-        error = SSLRead(tls->context, iov[ii].iov_base, size, &read_ret);
-        if (noErr != error) {
-            printf("read error %d errno %d\n", (int)error, errno);
-        } else {
-            total += read_ret;
-            if (read_ret >= min_bytes) {
-                min_bytes = 0;
-                break;
+        // make sure we totally fill up each buffer before going for the next one
+        // and read data as long as we are under the min_byte
+        while (total < min_bytes && read_for_iov < iov[ii].iov_len) {
+            size_t iov_size_available = iov[ii].iov_len - read_for_iov;
+            
+            if (iov_size_available > min_bytes - total) {
+                // don't ask more than the minimum to avoid being blocked
+                // SSL will try to fill up the rest (even if there is not enough)
+                iov_size_available = min_bytes - total;
+            }
+            error = SSLRead(tls->context, iov[ii].iov_base + read_for_iov, iov_size_available, &read_ret);
+            if (noErr != error) {
+                MONGOC_ERROR("read error %d errno %d", (int)error, errno);
             } else {
-                min_bytes -= read_ret;
+                total += read_ret;
+                read_for_iov += read_ret;
+                if (total >= min_bytes) {
+                    // if we have enough, don't call again read
+                    // the SSL lib might wait for more data
+                    break;
+                }
             }
         }
     }
+#endif
+#if SSL_LOG
+    print_iov("read" , iov, iovcnt);
+    printf("read min %zu => total %zu\n", min_bytes, total);
+#endif
     return total;
 }
 
@@ -377,6 +412,9 @@ bool
 mongoc_stream_tls_do_handshake (mongoc_stream_t *stream,
                                 int32_t          timeout_msec)
 {
+#if FAKE_SSL
+   return true;
+#else
    OSStatus error;
    mongoc_stream_apple_tls_t *tls = (mongoc_stream_apple_tls_t *)stream;
 
@@ -389,12 +427,13 @@ mongoc_stream_tls_do_handshake (mongoc_stream_t *stream,
       return true;
    }
 
-   printf("handshake error %d\n", (int)error);
+   MONGOC_ERROR("handshake error %d", (int)error);
    if (!errno) {
       errno = ETIMEDOUT;
    }
 
    return false;
+#endif
 }
 
 static CFDataRef
@@ -479,14 +518,14 @@ mongoc_stream_tls_check_cert (mongoc_stream_t *stream,
     CFStringRef cfHost = CFStringCreateWithCString(kCFAllocatorDefault, host, kCFStringEncodingUTF8);
     
     if (ret != noErr || trust == NULL) {
-        printf("error getting certifictate chain\n");
+        MONGOC_ERROR("error getting certifictate chain");
         goto out;
     }
     
     /* enable default root / anchor certificates */
     ret = SecTrustSetAnchorCertificates(trust, NULL);
     if (ret != noErr) {
-        printf("error setting anchor certificates\n");
+        MONGOC_ERROR("error setting anchor certificates");
         goto out;
     }
     
@@ -494,7 +533,7 @@ mongoc_stream_tls_check_cert (mongoc_stream_t *stream,
     
     ret = SecTrustEvaluate(trust, &trust_eval_result);
     if (ret != noErr) {
-        printf("error calling SecTrustEvaluate\n");
+        MONGOC_ERROR("error calling SecTrustEvaluate");
         goto out;
     }
     
@@ -507,7 +546,7 @@ mongoc_stream_tls_check_cert (mongoc_stream_t *stream,
             case kSecTrustResultRecoverableTrustFailure:
             case kSecTrustResultDeny:
         default:
-            printf("cerfificate verification failed, result is %d\n", trust_eval_result);
+            MONGOC_ERROR("cerfificate verification failed, result is %d", trust_eval_result);
     }
     
     if (SecTrustGetCertificateCount(trust) == 0) {
