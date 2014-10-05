@@ -29,6 +29,7 @@
 #undef MONGOC_LOG_DOMAIN
 #define MONGOC_LOG_DOMAIN "stream-gridfs"
 
+
 typedef struct
 {
    mongoc_stream_t       stream;
