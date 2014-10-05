@@ -119,8 +119,10 @@ static void print_iov(const char *action, mongoc_iovec_t *iov, size_t iovcnt)
 {
     size_t ii;
     size_t total = 0;
+    struct timeval current_time;
     
-    printf("=> %s (%ld):\n", action, iovcnt);
+    gettimeofday(&current_time, NULL);
+    printf("=> %s (%ld):                   %ld %d\n", action, iovcnt, current_time.tv_sec, current_time.tv_usec);
     for (ii = 0; ii < iovcnt; ii++) {
         char buffer[256];
         
