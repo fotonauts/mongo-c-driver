@@ -1102,13 +1102,13 @@ mongoc_socket_inet_ntop (struct addrinfo    *rp,     /* IN */
     switch (rp->ai_family) {
         case AF_INET:
             ptr = &((struct sockaddr_in *) rp->ai_addr)->sin_addr;
-            inet_ntop (rp->ai_family, ptr, tmp, sizeof(tmp));
-            bson_snprintf (buf, buflen, "ipv4 %s", tmp);
+            inet_ntop (rp->ai_family, ptr, tmp, sizeof tmp);
+            bson_snprintf (buf, buflen, "%s", tmp);
             break;
         case AF_INET6:
             ptr = &((struct sockaddr_in6 *) rp->ai_addr)->sin6_addr;
-            inet_ntop (rp->ai_family, ptr, tmp, sizeof(tmp));
-            bson_snprintf (buf, buflen, "ipv6 %s", tmp);
+            inet_ntop (rp->ai_family, ptr, tmp, sizeof tmp);
+            bson_snprintf (buf, buflen, "s%s", tmp);
             break;
         default:
             bson_snprintf (buf, buflen, "unknown ip %d", rp->ai_family);
