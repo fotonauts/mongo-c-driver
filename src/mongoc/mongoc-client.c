@@ -71,7 +71,9 @@
  *--------------------------------------------------------------------------
  */
 
-static void get_ip(struct addrinfo *rp, char *buffer)
+static
+void get_ip (struct addrinfo    *rp,
+             char               *buffer)
 {
     void *ptr;
     char tmp[256];
@@ -80,15 +82,15 @@ static void get_ip(struct addrinfo *rp, char *buffer)
         case AF_INET:
             ptr = &((struct sockaddr_in *) rp->ai_addr)->sin_addr;
             inet_ntop (rp->ai_family, ptr, tmp, sizeof(tmp));
-            sprintf(buffer, "ipv4 %s", tmp);
+            sprintf (buffer, "ipv4 %s", tmp);
             break;
         case AF_INET6:
             ptr = &((struct sockaddr_in6 *) rp->ai_addr)->sin6_addr;
             inet_ntop (rp->ai_family, ptr, tmp, sizeof(tmp));
-            sprintf(buffer, "ipv6 %s", tmp);
+            sprintf (buffer, "ipv6 %s", tmp);
             break;
         default:
-            sprintf(buffer, "unknown ip %d", rp->ai_family);
+            sprintf (buffer, "unknown ip %d", rp->ai_family);
             break;
     }
 }
