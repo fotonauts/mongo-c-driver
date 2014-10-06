@@ -54,30 +54,27 @@
 /*
  *--------------------------------------------------------------------------
  *
- * mongoc_client_connect_tcp --
+ * get_c_string_ip --
  *
- *       Connect to a host using a TCP socket.
- *
- *       This will be performed synchronously and return a mongoc_stream_t
- *       that can be used to connect with the remote host.
+ *       Convert the ip from addrinfo into a c string.
  *
  * Returns:
- *       A newly allocated mongoc_stream_t if successful; otherwise
- *       NULL and @error is set.
+ *       The value is returned into 'buffer'. The memory has to be allocated
+ *       by the caller
  *
  * Side effects:
- *       @error is set if return value is NULL.
+ *       None.
  *
  *--------------------------------------------------------------------------
  */
 
 static
-void get_ip (struct addrinfo    *rp,
-             char               *buffer)
+void get_c_string_ip (struct addrinfo    *rp,
+                      char               *buffer)
 {
     void *ptr;
     char tmp[256];
-    
+
     switch (rp->ai_family) {
         case AF_INET:
             ptr = &((struct sockaddr_in *) rp->ai_addr)->sin_addr;
@@ -94,6 +91,27 @@ void get_ip (struct addrinfo    *rp,
             break;
     }
 }
+
+
+/*
+ *--------------------------------------------------------------------------
+ *
+ * mongoc_client_connect_tcp --
+ *
+ *       Connect to a host using a TCP socket.
+ *
+ *       This will be performed synchronously and return a mongoc_stream_t
+ *       that can be used to connect with the remote host.
+ *
+ * Returns:
+ *       A newly allocated mongoc_stream_t if successful; otherwise
+ *       NULL and @error is set.
+ *
+ * Side effects:
+ *       @error is set if return value is NULL.
+ *
+ *--------------------------------------------------------------------------
+ */
 
 static mongoc_stream_t *
 mongoc_client_connect_tcp (const mongoc_uri_t       *uri,
@@ -166,7 +184,7 @@ mongoc_client_connect_tcp (const mongoc_uri_t       *uri,
                                       (socklen_t)rp->ai_addrlen,
                                       expire_at)) {
          char ip[255];
-         get_ip (rp, ip);
+         get_c_string_ip (rp, ip);
          MONGOC_WARNING ("Failed to connect to: %s:%d, error: %d, %s\n", ip, host->port, mongoc_socket_errno(sock), strerror(mongoc_socket_errno(sock)));
          mongoc_socket_destroy (sock);
          sock = NULL;
