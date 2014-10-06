@@ -167,7 +167,7 @@ mongoc_client_connect_tcp (const mongoc_uri_t       *uri,
                                       expire_at)) {
          char ip[255];
          get_ip (rp, ip);
-         MONGOC_WARNING ("Failed to connect to: %s, error: %d, %s\n", ip, mongoc_socket_errno(sock), strerror(mongoc_socket_errno(sock)));
+         MONGOC_WARNING ("Failed to connect to: %s:%d, error: %d, %s\n", ip, host->port, mongoc_socket_errno(sock), strerror(mongoc_socket_errno(sock)));
          mongoc_socket_destroy (sock);
          sock = NULL;
          continue;
