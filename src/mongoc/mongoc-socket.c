@@ -1108,7 +1108,7 @@ mongoc_socket_inet_ntop (struct addrinfo    *rp,     /* IN */
         case AF_INET6:
             ptr = &((struct sockaddr_in6 *) rp->ai_addr)->sin6_addr;
             inet_ntop (rp->ai_family, ptr, tmp, sizeof tmp);
-            bson_snprintf (buf, buflen, "s%s", tmp);
+            bson_snprintf (buf, buflen, "%s", tmp);
             break;
         default:
             bson_snprintf (buf, buflen, "unknown ip %d", rp->ai_family);
