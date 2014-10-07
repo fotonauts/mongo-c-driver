@@ -493,9 +493,11 @@ mongoc_socket_connect (mongoc_socket_t       *sock,      /* IN */
             RETURN (0);
          }
       } else {
-          ret = getsockopt (sock->sd, SOL_SOCKET, SO_ERROR,
-                            &optval, &optlen);
-          sock->errno_ = optval;
+         ret = getsockopt (sock->sd, SOL_SOCKET, SO_ERROR,
+                           &optval, &optlen);
+         if  (optval != 0 && ret == 0) {
+            sock->errno_ = optval;
+         }
       }
       RETURN (-1);
    } else if (failed) {
