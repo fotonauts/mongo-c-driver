@@ -489,6 +489,7 @@ mongoc_socket_connect (mongoc_socket_t       *sock,      /* IN */
          optval = -1;
          ret = getsockopt (sock->sd, SOL_SOCKET, SO_ERROR,
                            (char *)&optval, &optlen);
+         sock->errno_ = optval;
          if ((ret == 0) && (optval == 0)) {
             RETURN (0);
          }
