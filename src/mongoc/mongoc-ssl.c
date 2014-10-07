@@ -32,6 +32,12 @@
 #include "mongoc-trace.h"
 #include "mongoc-thread-private.h"
 
+#ifdef __APPLE__
+#include <CoreFoundation/CoreFoundation.h>
+#include <Security/Security.h>
+#include <sys/mman.h>
+#endif
+
 #ifdef _WIN32
 # define strncasecmp _strnicmp
 # define strcasecmp  _stricmp
@@ -188,6 +194,7 @@ _mongoc_ssl_hostcheck (const char *pattern,
 }
 
 #if !defined(__APPLE__)
+
 /** check if a provided cert matches a passed hostname
  */
 bool
@@ -486,6 +493,65 @@ _mongoc_ssl_extract_subject (const char *filename)
    return str;
 }
 
+#else
+
+static CFDataRef
+create_cfdata_from_filename(const char *filename)
+{
+    int fileDescriptor;
+    CFDataRef result = NULL;
+
+    fileDescriptor = open(filename, O_RDONLY, 0);
+    if (fileDescriptor != -1) {
+        struct stat fileStat;
+
+        if (stat(filename, &fileStat) != -1) {
+            unsigned char *fileContent;
+
+            fileContent = mmap(0, (size_t)fileStat.st_size, PROT_READ, MAP_FILE|MAP_PRIVATE, fileDescriptor, 0);
+            if (MAP_FAILED != fileContent) {
+                result = CFDataCreate(NULL, fileContent, (CFIndex)fileStat.st_size);
+                munmap(fileContent, (size_t)fileStat.st_size);
+            }
+        }
+        close(fileDescriptor);
+    }
+    return result;
+}
+
+char *
+_mongoc_ssl_extract_subject (const char *filename)
+{
+    CFDataRef data;
+    char *result = NULL;
+
+    data = create_cfdata_from_filename(filename);
+    if (data) {
+        SecCertificateRef certificate;
+
+        certificate = SecCertificateCreateWithData(NULL, data);
+        if (certificate) {
+            CFStringRef subject;
+
+            subject = SecCertificateCopySubjectSummary(certificate);
+            if (subject) {
+                CFIndex length = CFStringGetMaximumSizeForEncoding(CFStringGetLength(subject), kCFStringEncodingUTF8) + 1;
+
+                result = bson_malloc(length);
+                if (!CFStringGetCString(subject, result, length, kCFStringEncodingUTF8)) {
+                    bson_free(result);
+                    result = NULL;
+                }
+                CFRelease(subject);
+            }
+            CFRelease(certificate);
+        }
+    }
+    CFRelease(data);
+
+    return result;
+}
+
 #endif
 
 #ifdef _WIN32
@@ -526,6 +592,7 @@ _mongoc_ssl_thread_locking_callback (int         mode,
 }
 
 #if !defined(__APPLE__)
+
 static void
 _mongoc_ssl_thread_startup (void)
 {
@@ -553,4 +620,5 @@ _mongoc_ssl_thread_cleanup (void)
    }
    OPENSSL_free (gMongocSslThreadLocks);
 }
+
 #endif
