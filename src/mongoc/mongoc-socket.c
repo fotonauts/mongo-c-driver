@@ -493,6 +493,8 @@ mongoc_socket_connect (mongoc_socket_t       *sock,      /* IN */
             RETURN (0);
          }
       } else {
+         // get the last error number. It might be updated
+         // after _mongoc_socket_wait()
          ret = getsockopt (sock->sd, SOL_SOCKET, SO_ERROR,
                            &optval, &optlen);
          if  (optval != 0 && ret == 0) {
