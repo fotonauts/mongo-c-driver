@@ -701,10 +701,26 @@ again:
    if (failed && try_again) {
       if (_mongoc_socket_wait (sock->sd, POLLIN, expire_at)) {
          GOTO (again);
+      } else {
+         int optval;
+         socklen_t optlen = sizeof optval;
+
+          if  (getsockopt (sock->sd, SOL_SOCKET, SO_ERROR,
+                           &optval, &optlen) == 0 &&
+               optval != 0) {
+            MONGOC_WARNING("previous error %d\n", sock->errno_);
+            sock->errno_ = optval;
+         }
       }
    }
 
    if (failed) {
+      char errmsg[32];
+
+      bson_strerror_r (mongoc_socket_errno (sock), errmsg, sizeof errmsg);
+      MONGOC_WARNING ("Socket read error: %d, %s",
+                      mongoc_socket_errno (sock),
+                      errmsg);
       RETURN (-1);
    }
 
