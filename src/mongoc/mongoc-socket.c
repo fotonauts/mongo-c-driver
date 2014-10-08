@@ -715,7 +715,7 @@ again:
    }
 
    if (failed) {
-      char errmsg[32];
+      char errmsg[64];
 
       bson_strerror_r (mongoc_socket_errno (sock), errmsg, sizeof errmsg);
       MONGOC_WARNING ("Socket read error: %d, %s",
