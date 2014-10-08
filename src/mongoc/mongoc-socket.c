@@ -708,7 +708,6 @@ again:
           if  (getsockopt (sock->sd, SOL_SOCKET, SO_ERROR,
                            &optval, &optlen) == 0 &&
                optval != 0) {
-            MONGOC_WARNING("previous error %d\n", sock->errno_);
             sock->errno_ = optval;
          }
       }
