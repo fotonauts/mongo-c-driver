@@ -503,7 +503,7 @@ mongoc_stream_tls_check_cert (mongoc_stream_t *stream,
     CFRetain(leaf_cert);
     
 out:
-    CFRelease(trust);
+    if (trust) CFRelease(trust);
     
     if (cfHost) CFRelease(cfHost);
     if (leaf_cert) CFRelease(leaf_cert);
