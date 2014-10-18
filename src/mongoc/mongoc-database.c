@@ -712,12 +712,12 @@ _mongoc_database_get_collection_info_legacy (mongoc_database_t *database,
              (name = bson_iter_utf8 (&iter, NULL)) &&
              !strchr (name, '$') &&
              (0 == strncmp (name, database->name, dbname_len))) {
-            bson_t col = BSON_INITIALIZER;
-            bson_copy_to_excluding_noinit (doc, &col, "name", NULL);
-            BSON_APPEND_UTF8 (&col, "name", name + (dbname_len + 1));  /* +1 for the '.' */
+            bson_t nprefix_col = BSON_INITIALIZER;
+            bson_copy_to_excluding_noinit (doc, &nprefix_col, "name", NULL);
+            BSON_APPEND_UTF8 (&nprefix_col, "name", name + (dbname_len + 1));  /* +1 for the '.' */
             /* need to construct a key for this array element. */
             bson_uint32_to_string(n_cols, &key, keystr, sizeof (keystr));
-            BSON_APPEND_DOCUMENT (&col_array, key, &col);
+            BSON_APPEND_DOCUMENT (&col_array, key, &nprefix_col);
             ++n_cols;
          }
       }
@@ -757,6 +757,7 @@ mongoc_database_get_collection_info (mongoc_database_t *database,
    if (cmd_success) {
        /* intentionally empty */
    } else if (error->code == MONGOC_ERROR_QUERY_COMMAND_NOT_FOUND) {
+      bson_destroy (reply);
       /* We are talking to a server that doesn' support listCollections. */
       /* clear out the error. */
       error->code = 0;
