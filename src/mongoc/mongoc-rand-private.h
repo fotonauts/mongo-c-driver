@@ -1,5 +1,5 @@
 /*
- * Copyright 2013 MongoDB, Inc.
+ * Copyright 2014 MongoDB, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,34 +14,25 @@
  * limitations under the License.
  */
 
-#ifndef MONGOC_READ_PREFS_PRIVATE_H
-#define MONGOC_READ_PREFS_PRIVATE_H
 
 #if !defined (MONGOC_I_AM_A_DRIVER) && !defined (MONGOC_COMPILATION)
 #error "Only <mongoc.h> can be included directly."
 #endif
 
-#include <bson.h>
 
-#include "mongoc-cluster-private.h"
-#include "mongoc-read-prefs.h"
+#ifndef MONGOC_RAND_PRIVATE_H
+#define MONGOC_RAND_PRIVATE_H
+
+
+#include <bson.h>
 
 
 BSON_BEGIN_DECLS
 
-
-struct _mongoc_read_prefs_t
-{
-   mongoc_read_mode_t mode;
-   bson_t             tags;
-};
-
-
-int _mongoc_read_prefs_score (const mongoc_read_prefs_t   *read_prefs,
-                              const mongoc_cluster_node_t *node);
-
+int _mongoc_rand_bytes(uint8_t * buf, int num);
+int _mongoc_pseudo_rand_bytes(uint8_t * buf, int num);
 
 BSON_END_DECLS
 
 
-#endif /* MONGOC_READ_PREFS_PRIVATE_H */
+#endif /* MONGOC_RAND_PRIVATE_H */

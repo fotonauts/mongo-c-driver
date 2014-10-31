@@ -14,30 +14,26 @@
  * limitations under the License.
  */
 
-#ifndef MONGOC_STREAM_FILE_H
-#define MONGOC_STREAM_FILE_H
 
 #if !defined (MONGOC_INSIDE) && !defined (MONGOC_COMPILATION)
-# error "Only <mongoc.h> can be included directly."
+#error "Only <mongoc.h> can be included directly."
 #endif
 
-#include "mongoc-stream.h"
+
+#ifndef MONGOC_RAND_H
+#define MONGOC_RAND_H
+
+
+#include <bson.h>
 
 
 BSON_BEGIN_DECLS
 
-
-typedef struct _mongoc_stream_file_t mongoc_stream_file_t;
-
-
-mongoc_stream_t *mongoc_stream_file_new          (int                   fd);
-mongoc_stream_t *mongoc_stream_file_new_for_path (const char           *path,
-                                                  int                   flags,
-                                                  int                   mode);
-int              mongoc_stream_file_get_fd       (mongoc_stream_file_t *stream);
-
+void mongoc_rand_seed(const void* buf, int num);
+void mongoc_rand_add(const void* buf, int num, double entropy);
+int mongoc_rand_status(void);
 
 BSON_END_DECLS
 
 
-#endif /* MONGOC_STREAM_FILE_H */
+#endif /* MONGOC_RAND_H */

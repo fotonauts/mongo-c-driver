@@ -1,5 +1,5 @@
 /*
- * Copyright 2013 MongoDB, Inc.
+ * Copyright 2014 MongoDB, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,23 +14,30 @@
  * limitations under the License.
  */
 
-#ifndef MONGOC_UTIL_PRIVATE_H
-#define MONGOC_UTIL_PRIVATE_H
 
-#if !defined (MONGOC_I_AM_A_DRIVER) && !defined (MONGOC_COMPILATION)
-#error "Only <mongoc.h> can be included directly."
-#endif
+#include "mongoc-config.h"
 
-#include <bson.h>
+#include <openssl/rand.h>
 
+#include "mongoc-rand.h"
+#include "mongoc-rand-private.h"
 
-BSON_BEGIN_DECLS
+int _mongoc_rand_bytes(uint8_t * buf, int num) {
+    return RAND_bytes(buf, num);
+}
 
+int _mongoc_pseudo_rand_bytes(uint8_t * buf, int num) {
+    return RAND_pseudo_bytes(buf, num);
+}
 
-char *_mongoc_hex_md5 (const char *input);
+void mongoc_rand_seed(const void* buf, int num) {
+    RAND_seed(buf, num);
+}
 
+void mongoc_rand_add(const void* buf, int num, double entropy) {
+    RAND_add(buf, num, entropy);
+}
 
-BSON_END_DECLS
-
-
-#endif /* MONGOC_UTIL_PRIVATE_H */
+int mongoc_rand_status(void) {
+    return RAND_status();
+}
