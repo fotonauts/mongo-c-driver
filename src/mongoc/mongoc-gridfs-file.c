@@ -402,7 +402,7 @@ mongoc_gridfs_file_readv (mongoc_gridfs_file_t *file,
                           uint32_t              timeout_msec)
 {
    uint32_t bytes_read = 0;
-   int32_t r;
+   size_t r;
    size_t i;
    uint32_t iov_pos;
 
@@ -460,7 +460,7 @@ mongoc_gridfs_file_writev (mongoc_gridfs_file_t *file,
                            uint32_t              timeout_msec)
 {
    uint32_t bytes_written = 0;
-   int32_t r;
+   size_t r;
    size_t i;
    uint32_t iov_pos;
 
@@ -522,7 +522,7 @@ _mongoc_gridfs_file_flush_page (mongoc_gridfs_file_t *file)
    bson_t *selector, *update;
    bool r;
    const uint8_t *buf;
-   uint32_t len;
+   size_t len;
 
    ENTRY;
    BSON_ASSERT (file);
@@ -575,7 +575,7 @@ _mongoc_gridfs_file_refresh_page (mongoc_gridfs_file_t *file)
 
    uint32_t n;
    const uint8_t *data;
-   uint32_t len;
+   size_t len;
 
    ENTRY;
 

@@ -22,6 +22,32 @@
 #include "mongoc-rand.h"
 #include "mongoc-rand-private.h"
 
+#if __APPLE__
+#include <Security/Security.h>
+
+int _mongoc_rand_bytes(uint8_t * buf, int num) {
+    return SecRandomCopyBytes(kSecRandomDefault, num, buf);
+}
+
+int _mongoc_pseudo_rand_bytes(uint8_t * buf, int num) {
+    return SecRandomCopyBytes(kSecRandomDefault, num, buf);
+}
+
+void mongoc_rand_seed(const void* buf, int num) {
+//    RAND_seed(buf, num);
+}
+
+void mongoc_rand_add(const void* buf, int num, double entropy) {
+//    RAND_add(buf, num, entropy);
+}
+
+int mongoc_rand_status(void) {
+//    return RAND_status();
+    return 1;
+}
+
+#else
+
 int _mongoc_rand_bytes(uint8_t * buf, int num) {
     return RAND_bytes(buf, num);
 }
@@ -41,3 +67,5 @@ void mongoc_rand_add(const void* buf, int num, double entropy) {
 int mongoc_rand_status(void) {
     return RAND_status();
 }
+
+#endif

@@ -41,12 +41,12 @@ typedef struct _mongoc_scram_t
    char         encoded_nonce[48];
    int32_t      encoded_nonce_len;
    uint8_t     *auth_message;
-   uint32_t     auth_messagemax;
-   uint32_t     auth_messagelen;
+   size_t       auth_messagemax;
+   size_t       auth_messagelen;
 } mongoc_scram_t;
 
 void
-_mongoc_scram_startup();
+_mongoc_scram_startup(void);
 
 void
 _mongoc_scram_init (mongoc_scram_t *scram);
@@ -64,10 +64,10 @@ _mongoc_scram_destroy (mongoc_scram_t *scram);
 bool
 _mongoc_scram_step (mongoc_scram_t *scram,
                     const uint8_t  *inbuf,
-                    uint32_t        inbuflen,
+                    size_t          inbuflen,
                     uint8_t        *outbuf,
-                    uint32_t        outbufmax,
-                    uint32_t       *outbuflen,
+                    size_t          outbufmax,
+                    size_t         *outbuflen,
                     bson_error_t   *error);
 
 

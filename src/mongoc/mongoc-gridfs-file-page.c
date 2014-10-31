@@ -30,7 +30,7 @@
  */
 mongoc_gridfs_file_page_t *
 _mongoc_gridfs_file_page_new (const uint8_t *data,
-                              uint32_t       len,
+                              size_t         len,
                               uint32_t       chunk_size)
 {
    mongoc_gridfs_file_page_t *page;
@@ -66,12 +66,12 @@ _mongoc_gridfs_file_page_seek (mongoc_gridfs_file_page_t *page,
 }
 
 
-int32_t
+size_t
 _mongoc_gridfs_file_page_read (mongoc_gridfs_file_page_t *page,
                                void                      *dst,
-                               uint32_t                   len)
+                               size_t                     len)
 {
-   int32_t bytes_read;
+   size_t bytes_read;
    const uint8_t *src;
 
    ENTRY;
@@ -100,12 +100,12 @@ _mongoc_gridfs_file_page_read (mongoc_gridfs_file_page_t *page,
  * I.e. the first write allocs a buf large enough for the chunk_size, which
  * because authoritative from then on out
  */
-int32_t
+size_t
 _mongoc_gridfs_file_page_write (mongoc_gridfs_file_page_t *page,
                                 const void                *src,
-                                uint32_t                   len)
+                                size_t                   len)
 {
-   int32_t bytes_written;
+   size_t bytes_written;
 
    ENTRY;
 
@@ -139,7 +139,7 @@ _mongoc_gridfs_file_page_get_data (mongoc_gridfs_file_page_t *page)
 }
 
 
-uint32_t
+size_t
 _mongoc_gridfs_file_page_get_len (mongoc_gridfs_file_page_t *page)
 {
    ENTRY;
@@ -150,7 +150,7 @@ _mongoc_gridfs_file_page_get_len (mongoc_gridfs_file_page_t *page)
 }
 
 
-uint32_t
+size_t
 _mongoc_gridfs_file_page_tell (mongoc_gridfs_file_page_t *page)
 {
    ENTRY;

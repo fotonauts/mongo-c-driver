@@ -1689,7 +1689,7 @@ _mongoc_cluster_auth_node_scram (mongoc_cluster_t      *cluster,
                                  mongoc_cluster_node_t *node,
                                  bson_error_t          *error)
 {
-   uint32_t buflen = 0;
+   size_t buflen = 0;
    mongoc_scram_t scram;
    bson_iter_t iter;
    bool ret = false;
