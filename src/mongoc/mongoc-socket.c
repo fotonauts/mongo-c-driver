@@ -492,6 +492,8 @@ mongoc_socket_connect (mongoc_socket_t       *sock,      /* IN */
          sock->errno_ = optval;
          if ((ret == 0) && (optval == 0)) {
             RETURN (0);
+         } else {
+            errno = sock->errno_ = optval;
          }
       } else {
          // get the last error number. It might be updated
