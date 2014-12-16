@@ -61,13 +61,14 @@ int main (int argc, char *argv[])
             break;
          }
 
-         if (fwrite (iov.iov_base, r, 1, stdout) != r) {
+         if (fwrite (iov.iov_base, 1, r, stdout) != r) {
             MONGOC_ERROR ("Failed to write to stdout. Exiting.\n");
             exit (1);
          }
       }
 
       mongoc_stream_destroy (stream);
+      mongoc_gridfs_file_destroy (file);
    } else if (strcmp(command, "list") == 0) {
       bson_init (&query);
       bson_append_document_begin (&query, "$orderby", -1, &child);
