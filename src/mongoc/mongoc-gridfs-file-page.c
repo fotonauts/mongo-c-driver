@@ -52,7 +52,7 @@ _mongoc_gridfs_file_page_new (const uint8_t *data,
 
 bool
 _mongoc_gridfs_file_page_seek (mongoc_gridfs_file_page_t *page,
-                               uint32_t                   offset)
+                               uint32_t              offset)
 {
    ENTRY;
 
