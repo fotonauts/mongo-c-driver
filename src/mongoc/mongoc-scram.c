@@ -259,7 +259,7 @@ _mongoc_scram_salt_password (mongoc_scram_t *scram,
                              size_t          password_len,
                              const uint8_t  *salt,
                              size_t          salt_len,
-                             uint32_t        iterations)
+                             int64_t         iterations)
 {
    uint8_t intermediate_digest[MONGOC_SCRAM_HASH_SIZE];
    uint8_t start_key[MONGOC_SCRAM_HASH_SIZE];
@@ -437,7 +437,7 @@ _mongoc_scram_step2 (mongoc_scram_t *scram,
    int32_t decoded_salt_len;
    bool rval = true;
 
-   int iterations;
+   int64_t iterations;
 
    BSON_ASSERT (scram);
    BSON_ASSERT (outbuf);
@@ -597,7 +597,7 @@ _mongoc_scram_step2 (mongoc_scram_t *scram,
       goto FAIL;
    }
 
-   iterations = (int)bson_ascii_strtoll ((char *)val_i, &tmp, 10);
+   iterations = bson_ascii_strtoll ((char *)val_i, &tmp, 10);
    /* tmp holds the location of the failed to parse character.  So if it's
     * null, we got to the end of the string and didn't have a parse error */
 
