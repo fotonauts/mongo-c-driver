@@ -85,6 +85,8 @@ void
 _mongoc_ssl_init (void)
 {
 #if !defined(__APPLE__)
+   SSL_CTX *ctx;
+
    SSL_library_init ();
    SSL_load_error_strings ();
    ERR_load_BIO_strings ();
