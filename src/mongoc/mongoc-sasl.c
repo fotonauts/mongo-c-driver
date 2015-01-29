@@ -14,6 +14,9 @@
  * limitations under the License.
  */
 
+#include "mongoc-config.h"
+
+#ifdef MONGOC_ENABLE_SASL
 
 #include <string.h>
 
@@ -346,3 +349,5 @@ _mongoc_sasl_step (mongoc_sasl_t *sasl,
 
    return true;
 }
+
+#endif

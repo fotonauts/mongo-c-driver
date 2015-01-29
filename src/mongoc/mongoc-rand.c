@@ -14,6 +14,10 @@
  * limitations under the License.
  */
 
+#include "mongoc-config.h"
+
+#ifdef MONGOC_ENABLE_SSL
+
 #include "mongoc-rand.h"
 #include "mongoc-rand-private.h"
 
