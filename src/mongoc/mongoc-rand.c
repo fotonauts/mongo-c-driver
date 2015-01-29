@@ -49,7 +49,7 @@ int mongoc_rand_status(void) {
     return 1;
 }
 
-#else
+#else // __APPLE__
 
 int _mongoc_rand_bytes(uint8_t * buf, int num) {
     return RAND_bytes(buf, num);
@@ -71,4 +71,6 @@ int mongoc_rand_status(void) {
     return RAND_status();
 }
 
-#endif
+#endif //__APPLE__
+
+#endif // MONGOC_ENABLE_SSL

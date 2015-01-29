@@ -333,6 +333,7 @@ _mongoc_ssl_check_cert (SSL        *ssl,
    return r;
 }
 
+
 static bool
 _mongoc_ssl_setup_ca (SSL_CTX    *ctx,
                       const char *cert,
@@ -392,6 +393,7 @@ _mongoc_ssl_setup_pem_file (SSL_CTX    *ctx,
 
    return 1;
 }
+
 
 /**
  * _mongoc_ssl_ctx_new:
@@ -581,7 +583,7 @@ _mongoc_ssl_thread_id_callback (void)
    return ret;
 }
 
-#endif
+#endif // _WIN32
 
 static void
 _mongoc_ssl_thread_locking_callback (int         mode,
@@ -626,4 +628,6 @@ _mongoc_ssl_thread_cleanup (void)
    OPENSSL_free (gMongocSslThreadLocks);
 }
 
-#endif
+#endif // !defined(__APPLE__)
+
+#endif // MONGOC_ENABLE_SSL
