@@ -22,6 +22,7 @@
 #include "mongoc-cluster-private.h"
 #include "mongoc-client-private.h"
 #include "mongoc-trace.h"
+#include "mongoc-client-pool-private.h"
 
 
 struct _mongoc_client_pool_t
