@@ -29,11 +29,11 @@
 #include <Security/Security.h>
 
 int _mongoc_rand_bytes(uint8_t * buf, int num) {
-    return SecRandomCopyBytes(kSecRandomDefault, num, buf);
+    return SecRandomCopyBytes(kSecRandomDefault, num, buf) == 0;
 }
 
 int _mongoc_pseudo_rand_bytes(uint8_t * buf, int num) {
-    return SecRandomCopyBytes(kSecRandomDefault, num, buf);
+    return SecRandomCopyBytes(kSecRandomDefault, num, buf) == 0;
 }
 
 void mongoc_rand_seed(const void* buf, int num) {
