@@ -16,13 +16,12 @@
 
 
 #include "mongoc-counters-private.h"
-#include "mongoc-client-pool.h"
+#include "mongoc-client-pool-private.h"
 #include "mongoc-queue-private.h"
 #include "mongoc-thread-private.h"
 #include "mongoc-cluster-private.h"
 #include "mongoc-client-private.h"
 #include "mongoc-trace.h"
-#include "mongoc-client-pool-private.h"
 
 
 struct _mongoc_client_pool_t
