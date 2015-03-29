@@ -38,6 +38,7 @@
 #define SSL_LOG             0
 #define FAKE_SSL            0
 
+#if SSL_LOG
 static char charFromInt(unsigned char value)
 {
     if (value <= 9) {
@@ -132,6 +133,7 @@ static void print_iov(const char *action, mongoc_iovec_t *iov, size_t iovcnt)
     }
     printf("total %ld\n", total);
 }
+#endif
 
 /**
  * mongoc_stream_apple_tls_t:

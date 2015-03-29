@@ -569,13 +569,13 @@ static bool
 _mongoc_gridfs_file_refresh_page (mongoc_gridfs_file_t *file)
 {
    bson_t *query, *fields, child, child2;
-   const bson_t *chunk;
+   const bson_t *chunk = NULL;
    const char *key;
    bson_iter_t iter;
 
    uint32_t n;
-   const uint8_t *data;
-   size_t len;
+   const uint8_t *data = NULL;
+   size_t len = 0;
 
    ENTRY;
 

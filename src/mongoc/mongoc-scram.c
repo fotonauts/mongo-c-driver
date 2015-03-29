@@ -421,7 +421,7 @@ _mongoc_scram_step2 (mongoc_scram_t *scram,
                      bson_error_t   *error)
 {
    uint8_t *val_r = NULL;
-   uint32_t val_r_len;
+   uint32_t val_r_len = 0;
    uint8_t *val_s = NULL;
    uint32_t val_s_len;
    uint8_t *val_i = NULL;
@@ -722,7 +722,7 @@ _mongoc_scram_step3 (mongoc_scram_t *scram,
    uint8_t *val_e = NULL;
    uint32_t val_e_len;
    uint8_t *val_v = NULL;
-   uint32_t val_v_len;
+   uint32_t val_v_len = 0;
 
    uint8_t **current_val;
    uint32_t *current_val_len;
